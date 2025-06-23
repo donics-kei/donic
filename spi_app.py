@@ -5,7 +5,7 @@ import time
 import os
 
 NUM_QUESTIONS = 40
-DEFAULT_TIME_LIMIT = 60  # 秒数（1問あたり）
+DEFAULT_TIME_LIMIT = 60  # 予備用（未指定時）
 
 @st.cache_data
 def load_questions():
@@ -17,44 +17,66 @@ def load_questions():
 if "page" not in st.session_state:
     st.session_state.page = "select"
 if st.session_state.page == "select":
-    st.title("SPI模擬試験：一括採点・40問版")
+    st.title("SPI模擬試験：1問ずつ・最後に採点・40問版")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
     if st.button("開始"):
         st.session_state.category = st.session_state.temp_category
+        df = load_questions()
+        filtered_df = df[df['category'] == st.session_state.category]
+        sample_size = min(NUM_QUESTIONS, len(filtered_df))
+        st.session_state.questions = filtered_df.sample(n=sample_size).reset_index(drop=True)
+        st.session_state.answers = [None] * sample_size
+        st.session_state.q_index = 0
+        st.session_state.completed = False
+        st.session_state.start_times = [None] * sample_size
         st.session_state.page = "quiz"
         st.rerun()
     st.stop()
 
-# 質問読み込みと初期化
-if "questions" not in st.session_state:
-    df = load_questions()
-    filtered_df = df[df['category'] == st.session_state.category]
-    if len(filtered_df) < NUM_QUESTIONS:
-        st.warning(f"注意：『{st.session_state.category}』カテゴリの問題数が{NUM_QUESTIONS}問未満です（{len(filtered_df)}問）。")
-    sample_size = min(NUM_QUESTIONS, len(filtered_df))
-    questions = filtered_df.sample(n=sample_size).reset_index(drop=True)
-    st.session_state.questions = questions
-    st.session_state.answers = [None] * sample_size
-    st.session_state.start_times = [time.time()] * sample_size
-    st.session_state.completed = False
-
 questions = st.session_state.questions
+q_index = st.session_state.q_index
 
 st.title(f"SPI模擬試験（{st.session_state.category}・{NUM_QUESTIONS}問）")
 
 if not st.session_state.completed:
-    for i, q in questions.iterrows():
-        st.subheader(f"Q{i + 1}: {q['question']}")
-        labels = ['a', 'b', 'c', 'd', 'e']
-        choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
-        labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{i}")
-        if selected:
-            selected_index = labeled_choices.index(selected)
-            st.session_state.answers[i] = labels[selected_index]
+    q = questions.iloc[q_index]
+    st.subheader(f"Q{q_index + 1}: {q['question']}")
 
-    if st.button("採点する"):
-        st.session_state.completed = True
+    # 各問題のタイムリミットをCSVから取得（なければデフォルト）
+    try:
+        question_time_limit = int(q.get("timelimit", DEFAULT_TIME_LIMIT))
+    except:
+        question_time_limit = DEFAULT_TIME_LIMIT
+
+    # タイマー開始
+    if st.session_state.start_times[q_index] is None:
+        st.session_state.start_times[q_index] = time.time()
+
+    elapsed = time.time() - st.session_state.start_times[q_index]
+    remaining = int(question_time_limit - elapsed)
+    if remaining < 0:
+        remaining = 0
+    st.warning(f"⏳ 残り時間：{remaining} 秒")
+
+    if remaining == 0:
+        st.error("時間切れ！未回答として次へ進みます")
+        st.session_state.answers[q_index] = None
+        st.session_state.q_index += 1
+        if st.session_state.q_index >= NUM_QUESTIONS:
+            st.session_state.completed = True
+        st.rerun()
+
+    labels = ['a', 'b', 'c', 'd', 'e']
+    choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
+    labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
+    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
+
+    if st.button("次へ"):
+        selected_index = labeled_choices.index(selected)
+        st.session_state.answers[q_index] = labels[selected_index]
+        st.session_state.q_index += 1
+        if st.session_state.q_index >= NUM_QUESTIONS:
+            st.session_state.completed = True
         st.rerun()
 else:
     score = 0
