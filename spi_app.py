@@ -48,7 +48,7 @@ if not st.session_state.completed:
         labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
         labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-        selected = st.radio("選択肢を選んでください：", labeled_choices, index=-1, key=f"q{i}")
+        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{i}")
         if selected:
             selected_index = labeled_choices.index(selected)
             st.session_state.answers[i] = labels[selected_index]
