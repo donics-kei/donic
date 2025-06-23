@@ -16,7 +16,7 @@ def load_questions():
 if "page" not in st.session_state:
     st.session_state.page = "select"
 if st.session_state.page == "select":
-    st.title("SPI模擬試験：1問ずつ採点・20問版")
+    st.title("SPI模擬試験：20問版")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
     if st.button("開始"):
         st.session_state.category = st.session_state.temp_category
