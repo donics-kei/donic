@@ -1,120 +1,88 @@
 import streamlit as st
 import pandas as pd
-import time
 import random
+import time
+import os
 
-# --------------------------
-# 質問データ読み込み（Excel）
-# --------------------------
+NUM_QUESTIONS = 40
+DEFAULT_TIME_LIMIT = 60  # 秒数（1問あたり）
+
 @st.cache_data
 def load_questions():
-    df = pd.read_cvi("spi_questions_converted.csv")
-    return df
+    BASE_DIR = os.path.dirname(__file__)
+    csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
+    return pd.read_csv(csv_path)
 
-questions_all = load_questions()
-
-# --------------------------
-# セッション状態の初期化
-# --------------------------
+# 初期化
 if "page" not in st.session_state:
     st.session_state.page = "select"
-if "questions" not in st.session_state:
-    st.session_state.questions = []
-if "q_index" not in st.session_state:
-    st.session_state.q_index = 0
-if "score" not in st.session_state:
-    st.session_state.score = 0
-if "answered" not in st.session_state:
-    st.session_state.answered = []
-if "question_start_time" not in st.session_state:
-    st.session_state.question_start_time = time.time()
-
-# --------------------------
-# ページ1：カテゴリ選択
-# --------------------------
 if st.session_state.page == "select":
-    st.title("SPI 模擬試験")
-    category = st.radio("カテゴリを選んでください", ["すべて", "言語", "非言語"])
-    if st.button("スタート"):
-        if category == "すべて":
-            filtered = questions_all
-        else:
-            filtered = questions_all[questions_all["category"] == category]
-
-        if len(filtered) < 40:
-            st.error("40問以上の問題が必要です。")
-        else:
-            st.session_state.questions = filtered.sample(40).reset_index(drop=True)
-            st.session_state.page = "quiz"
-            st.session_state.q_index = 0
-            st.session_state.score = 0
-            st.session_state.answered = []
-            st.session_state.question_start_time = time.time()
-            st.rerun()
-
-# --------------------------
-# ページ2：出題＆解答処理
-# --------------------------
-elif st.session_state.page == "quiz":
-    if st.session_state.q_index >= len(st.session_state.questions):
-        st.session_state.page = "result"
+    st.title("SPI模擬試験：一括採点・40問版")
+    st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
+    if st.button("開始"):
+        st.session_state.category = st.session_state.temp_category
+        st.session_state.page = "quiz"
         st.rerun()
+    st.stop()
 
-    q = st.session_state.questions.iloc[st.session_state.q_index]
-    st.subheader(f"Q{st.session_state.q_index + 1}: {q['question']}")
-    st.caption(f"カテゴリ：{q['category']}")
+# 質問読み込みと初期化
+if "questions" not in st.session_state:
+    df = load_questions()
+    filtered_df = df[df['category'] == st.session_state.category]
+    if len(filtered_df) < NUM_QUESTIONS:
+        st.warning(f"注意：『{st.session_state.category}』カテゴリの問題数が{NUM_QUESTIONS}問未満です（{len(filtered_df)}問）。")
+    sample_size = min(NUM_QUESTIONS, len(filtered_df))
+    questions = filtered_df.sample(n=sample_size).reset_index(drop=True)
+    st.session_state.questions = questions
+    st.session_state.answers = [None] * sample_size
+    st.session_state.start_times = [time.time()] * sample_size
+    st.session_state.completed = False
 
-    choices = [q['choice1'], q['choice2'], q['choice3'], q['choice4']]
-    answer_time_limit = int(q['time_limit'])
+questions = st.session_state.questions
 
-    remaining = answer_time_limit - int(time.time() - st.session_state.question_start_time)
-    st.markdown(f"### ⏳ 残り時間：{max(0, remaining)} 秒")
-    st.progress(max(0, remaining) / answer_time_limit)
+st.title(f"SPI模擬試験（{st.session_state.category}・{NUM_QUESTIONS}問）")
 
-    selected = st.radio("選択肢を選んでください：", choices, key=f"q{st.session_state.q_index}")
+if not st.session_state.completed:
+    for i, q in questions.iterrows():
+        st.subheader(f"Q{i + 1}: {q['question']}")
+        labels = ['a', 'b', 'c', 'd', 'e']
+        choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
+        labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
+        selected = st.radio("選択肢を選んでください：", labeled_choices, index=-1, key=f"q{i}")
+        if selected:
+            selected_index = labeled_choices.index(selected)
+            st.session_state.answers[i] = labels[selected_index]
 
-    if st.button("解答する") or remaining <= 0:
-        correct_idx = int(q['answer']) - 1
-        selected_idx = choices.index(selected) if selected in choices else -1
-        is_correct = (selected_idx == correct_idx)
-
-        st.session_state.answered.append({
-            "question": q['question'],
-            "your_answer": choices[selected_idx] if selected_idx >= 0 else "無回答",
-            "correct_answer": choices[correct_idx],
-            "is_correct": is_correct if selected_idx >= 0 else False,
-            "explanation": q['explanation'],
-            "category": q['category'],
-            "time_limit": q['time_limit'],
-            "time_used": min(answer_time_limit, int(time.time() - st.session_state.question_start_time))
-        })
-
-        if is_correct:
-            st.session_state.score += 1
-
-        st.session_state.q_index += 1
-        st.session_state.question_start_time = time.time()
+    if st.button("採点する"):
+        st.session_state.completed = True
         st.rerun()
+else:
+    score = 0
+    st.success("全40問終了！ 以下が採点結果です：")
+    st.subheader("採点結果と解説")
+    for i, q in questions.iterrows():
+        your_answer = st.session_state.answers[i]
+        correct_answer = str(q['answer']).lower().strip()
+        labels = ['a', 'b', 'c', 'd', 'e']
+        choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
+        correct_index = labels.index(correct_answer)
+        correct_choice = choices[correct_index]
 
-# --------------------------
-# ページ3：結果表示と解説
-# --------------------------
-elif st.session_state.page == "result":
-    st.title("✅ 結果発表")
-    total = len(st.session_state.answered)
-    correct = st.session_state.score
-    wrong = total - correct
+        if your_answer == correct_answer:
+            st.markdown(f"**Q{i+1}: {q['question']}** ✅ 正解")
+            score += 1
+        else:
+            st.markdown(f"**Q{i+1}: {q['question']}** ❌ 不正解")
 
-    st.write(f"得点：{correct} / {total}")
-    st.write(f"正解数：{correct}問　|　不正解数：{wrong}問")
-    st.markdown("---")
-    st.subheader("📘 解説一覧")
+        if your_answer:
+            your_choice = choices[labels.index(your_answer)]
+            st.markdown(f"あなたの回答：{your_answer.upper()} - {your_choice}")
+        else:
+            st.markdown("あなたの回答：未回答")
 
-    for i, a in enumerate(st.session_state.answered):
-        st.markdown(f"**Q{i+1}: {a['question']}**")
-        st.write(f"- あなたの回答：{a['your_answer']}")
-        st.write(f"- 正解：{a['correct_answer']}")
-        st.write(f"- 結果：{'✅ 正解' if a['is_correct'] else '❌ 不正解'}")
-        st.write(f"- 制限時間：{a['time_limit']}秒　使用時間：{a['time_used']}秒")
-        st.write(f"- カテゴリ：{a['category']}")
-        st.info(a['explanation'])
+        st.markdown(f"正解：{correct_answer.upper()} - {correct_choice}")
+        if q.get("explanation"):
+            st.markdown(f"📘 解説：{q['explanation']}")
+        st.markdown("---")
+
+    st.subheader(f"最終スコア：{score} / {NUM_QUESTIONS}")
