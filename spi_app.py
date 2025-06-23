@@ -17,7 +17,7 @@ def load_questions():
 if "page" not in st.session_state:
     st.session_state.page = "select"
 if st.session_state.page == "select":
-    st.title("SPI模擬試験：40問版")
+    st.title("SPI模擬試験：1問ずつ・最後に採点・40問版")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
     if st.button("開始"):
         st.session_state.category = st.session_state.temp_category
@@ -42,9 +42,9 @@ if not st.session_state.completed:
     q = questions.iloc[q_index]
     st.subheader(f"Q{q_index + 1}: {q['question']}")
 
-    # 各問題のタイムリミットをCSVから取得（なければデフォルト）
+    # 各問題のタイムリミットをCSVの time_limt 列から取得（なければデフォルト）
     try:
-        question_time_limit = int(q.get("time_limit", DEFAULT_TIME_LIMIT))
+        question_time_limit = int(q.get("time_limt", DEFAULT_TIME_LIMIT))
     except:
         question_time_limit = DEFAULT_TIME_LIMIT
 
@@ -78,8 +78,14 @@ if not st.session_state.completed:
         if st.session_state.q_index >= NUM_QUESTIONS:
             st.session_state.completed = True
         st.rerun()
+
+    # 擬似カウントダウン：1秒ごとにリロード
+    time.sleep(1)
+    st.experimental_rerun()
+
 else:
     score = 0
+    st.subheader(f"🎯 最終スコア：{score} / {NUM_QUESTIONS}")
     st.success("全40問終了！ 以下が採点結果です：")
     st.subheader("採点結果と解説")
     for i, q in questions.iterrows():
@@ -106,5 +112,3 @@ else:
         if q.get("explanation"):
             st.markdown(f"📘 解説：{q['explanation']}")
         st.markdown("---")
-
-    st.subheader(f"最終スコア：{score} / {NUM_QUESTIONS}")
