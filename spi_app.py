@@ -81,7 +81,7 @@ if not st.session_state.completed:
 
     # 擬似カウントダウン：1秒ごとにリロード
     time.sleep(1)
-    st.experimental_rerun()
+    st.rerun()
 
 else:
     score = 0
