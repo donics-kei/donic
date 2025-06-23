@@ -10,7 +10,7 @@ NUM_QUESTIONS = 20
 @st.cache_data
 def load_questions():
     BASE_DIR = os.path.dirname(__file__)
-    csv_path = os.path.join(BASE_DIR, "spi_questions.csv")
+    csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
 # 初期化
