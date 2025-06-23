@@ -8,7 +8,7 @@ import random
 # --------------------------
 @st.cache_data
 def load_questions():
-    df = pd.read_excel("spi_questions.csv")
+    df = pd.read_csv("spi_questions.csv")
     return df
 
 questions_all = load_questions()
