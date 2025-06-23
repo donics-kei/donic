@@ -17,7 +17,7 @@ def load_questions():
 if "page" not in st.session_state:
     st.session_state.page = "select"
 if st.session_state.page == "select":
-    st.title("SPI模擬試験：1問ずつ・最後に採点・40問版")
+    st.title("SPI模擬試験：40問版")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
     if st.button("開始"):
         st.session_state.category = st.session_state.temp_category
@@ -44,7 +44,7 @@ if not st.session_state.completed:
 
     # 各問題のタイムリミットをCSVから取得（なければデフォルト）
     try:
-        question_time_limit = int(q.get("timelimit", DEFAULT_TIME_LIMIT))
+        question_time_limit = int(q.get("time_limit", DEFAULT_TIME_LIMIT))
     except:
         question_time_limit = DEFAULT_TIME_LIMIT
 
