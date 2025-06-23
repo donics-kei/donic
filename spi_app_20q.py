@@ -4,7 +4,6 @@ import random
 import time
 import os
 
-# 出題数を20問に制限
 NUM_QUESTIONS = 20
 
 @st.cache_data
@@ -37,6 +36,7 @@ if "questions" not in st.session_state:
     st.session_state.q_index = 0
     st.session_state.score = 0
     st.session_state.answered = []
+    st.session_state.show_feedback = False
 
 questions = st.session_state.questions
 
@@ -50,39 +50,46 @@ if st.session_state.q_index < NUM_QUESTIONS:
     choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{st.session_state.q_index}")
-    if st.button("回答する"):
-        selected_index = labeled_choices.index(selected)
-        your_answer = labels[selected_index]
-        correct_answer = str(q['answer']).lower().strip()
-        correct_index = labels.index(correct_answer)
-        is_correct = your_answer == correct_answer
-        your_choice = choices[selected_index]
-        correct_choice = choices[correct_index]
+    if not st.session_state.get("show_feedback", False):
+        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{st.session_state.q_index}")
+        if st.button("回答する"):
+            selected_index = labeled_choices.index(selected)
+            your_answer = labels[selected_index]
+            correct_answer = str(q['answer']).lower().strip()
+            correct_index = labels.index(correct_answer)
+            is_correct = your_answer == correct_answer
+            your_choice = choices[selected_index]
+            correct_choice = choices[correct_index]
 
-        if is_correct:
-            st.success("正解！")
-            st.session_state.score += 1
-        else:
-            st.error("不正解")
+            if is_correct:
+                st.success("正解！")
+                st.session_state.score += 1
+            else:
+                st.error("不正解")
 
-        st.markdown(f"**あなたの回答：{your_answer.upper()} - {your_choice}**")
-        st.markdown(f"**正解：{correct_answer.upper()} - {correct_choice}**")
-        if q.get("explanation"):
-            st.info(f"📘 解説：{q['explanation']}")
+            st.markdown(f"**あなたの回答：{your_answer.upper()} - {your_choice}**")
+            st.markdown(f"**正解：{correct_answer.upper()} - {correct_choice}**")
+            if q.get("explanation"):
+                st.info(f"📘 解説：{q['explanation']}")
 
-        st.session_state.answered.append({
-            "question": q['question'],
-            "your_answer": your_answer,
-            "your_choice": your_choice,
-            "correct_answer": correct_answer,
-            "correct_choice": correct_choice,
-            "correct": is_correct,
-            "explanation": q.get("explanation", "")
-        })
+            st.session_state.answered.append({
+                "question": q['question'],
+                "your_answer": your_answer,
+                "your_choice": your_choice,
+                "correct_answer": correct_answer,
+                "correct_choice": correct_choice,
+                "correct": is_correct,
+                "explanation": q.get("explanation", "")
+            })
 
-        st.session_state.q_index += 1
-        st.rerun()
+            st.session_state.show_feedback = True
+            st.stop()
+
+    elif st.session_state.get("show_feedback", False):
+        if st.button("次の問題へ進む"):
+            st.session_state.q_index += 1
+            st.session_state.show_feedback = False
+            st.rerun()
 else:
     st.success("全20問終了！")
     st.write(f"あなたの得点：{st.session_state.score} / {NUM_QUESTIONS}")
