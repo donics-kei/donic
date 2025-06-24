@@ -114,8 +114,7 @@ if q_index < NUM_QUESTIONS:
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
             st.rerun()
-
-        if not st.session_state.get("feedback_shown", False):
+else:
     time.sleep(1)
     st.rerun()
 
