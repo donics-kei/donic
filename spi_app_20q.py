@@ -58,14 +58,30 @@ if q_index < NUM_QUESTIONS:
     st.subheader(f"Q{q_index + 1}: {q['question']}")
 
     # カウントダウン
-    if st.session_state.start_times[q_index] is None:
-        st.session_state.start_times[q_index] = time.time()
+    if not st.session_state.get(f"feedback_shown_{q_index}", False):
+        if st.session_state.start_times[q_index] is None:
+            st.session_state.start_times[q_index] = time.time()
 
-    elapsed = time.time() - st.session_state.start_times[q_index]
-    remaining = int(question_time_limit - elapsed)
-    if remaining < 0:
-        remaining = 0
-    st.warning(f"⏳ 残り時間：{remaining} 秒")
+        elapsed = time.time() - st.session_state.start_times[q_index]
+        remaining = int(question_time_limit - elapsed)
+        if remaining < 0:
+            remaining = 0
+        st.warning(f"⏳ 残り時間：{remaining} 秒")
+
+        if remaining == 0 and len(st.session_state.answered) <= q_index:
+            st.session_state.answered.append({
+                "question": q['question'],
+                "your_answer": None,
+                "your_choice": None,
+                "correct_answer": str(q['answer']).lower().strip(),
+                "correct_choice": q[f"choice{ord(str(q['answer']).lower().strip()) - 96}"],
+                "correct": False,
+                "explanation": q.get("explanation", "")
+            })
+            st.session_state.pop(f"feedback_shown_{q_index}", None)
+            st.session_state.pop(f"selected_choice_{q_index}", None)
+            st.session_state.q_index += 1
+            st.rerun()
 
     if remaining == 0 and len(st.session_state.answered) <= q_index:
         st.session_state.answered.append({
@@ -133,8 +149,7 @@ if q_index < NUM_QUESTIONS:
             st.session_state.page = "blank"
             st.rerun()
 
-    time.sleep(1)
-    st.rerun()
+    
 else:
     st.success("✅ すべての問題が終了しました！")
     st.metric("あなたの最終スコア", f"{st.session_state.score} / {NUM_QUESTIONS}")
