@@ -99,6 +99,9 @@ if q_index < NUM_QUESTIONS:
             st.session_state[f"selected_choice_{q_index}"] = selected
             st.session_state[f"feedback_shown_{q_index}"] = True
             st.rerun()
+        if remaining > 0:
+            time.sleep(1)
+            st.rerun()
 
         if remaining > 0:
             time.sleep(1)
