@@ -85,11 +85,12 @@ if q_index < NUM_QUESTIONS:
                     "explanation": q.get("explanation", "")
                 })
 
-        if st.button("次の問題へ"):
-            
-                st.session_state.q_index += 1
-                st.session_state.feedback_shown = False
-                st.rerun()
+        if st.session_state.get("feedback_shown", False) and st.session_state.get("selected_choice"):
+    if st.button("次の問題へ"):
+        st.session_state.q_index += 1
+        st.session_state.feedback_shown = False
+        st.session_state.selected_choice = None
+        st.rerun()
 
             
 
