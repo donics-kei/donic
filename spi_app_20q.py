@@ -114,11 +114,9 @@ if q_index < NUM_QUESTIONS:
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
             st.rerun()
-else:
-    if not st.session_state.get("feedback_shown", False):
-        time.sleep(1)
-        st.rerun()
-
+elif not st.session_state.get("feedback_shown", False):
+    time.sleep(1)
+    st.rerun()
 else:
     st.subheader(f"🎯 最終スコア：{st.session_state.score} / {NUM_QUESTIONS}")
     st.success("全20問終了！ 以下が採点結果です：")
@@ -130,3 +128,4 @@ else:
         if result['explanation']:
             st.markdown(f"📘 解説：{result['explanation']}")
         st.markdown("---")
+
