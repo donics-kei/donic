@@ -85,6 +85,12 @@ if not st.session_state.completed:
 
 else:
     score = 0
+    for i, q in questions.iterrows():
+        your_answer = st.session_state.answers[i]
+        correct_answer = str(q['answer']).lower().strip()
+        if your_answer == correct_answer:
+            score += 1
+
     st.subheader(f"🎯 最終スコア：{score} / {NUM_QUESTIONS}")
     st.success("全40問終了！ 以下が採点結果です：")
     st.subheader("採点結果と解説")
@@ -98,7 +104,6 @@ else:
 
         if your_answer == correct_answer:
             st.markdown(f"**Q{i+1}: {q['question']}** ✅ 正解")
-            score += 1
         else:
             st.markdown(f"**Q{i+1}: {q['question']}** ❌ 不正解")
 
