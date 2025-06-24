@@ -35,8 +35,9 @@ if st.session_state.page == "select":
 questions = st.session_state.questions
 q_index = st.session_state.q_index
 
-# 各問題の制限時間をリストで取り出す（J列: time_limt）
-time_limits = questions['time_limt'].fillna(60).astype(int).tolist()
+# 各問題の制限時間をリストで取り出す（J列: time_limit）
+time_limit_col = 'time_limit' if 'time_limit' in questions.columns else 'time_limt'
+time_limits = questions[time_limit_col].fillna(60).astype(int).tolist()
 
 st.title(f"SPI模擬試験（{st.session_state.category}・{NUM_QUESTIONS}問）")
 
