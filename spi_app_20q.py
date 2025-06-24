@@ -69,7 +69,7 @@ if q_index < NUM_QUESTIONS:
         })
         st.session_state.q_index += 1
         st.session_state.feedback_shown = False
-        st.session_state.selected_choice = None
+        del st.session_state[f"selected_choice_{q_index}"]
         st.rerun()
 
     if not st.session_state.get("feedback_shown", False):
@@ -78,14 +78,15 @@ if q_index < NUM_QUESTIONS:
         labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
         selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
         if st.button("回答する"):
-            st.session_state.selected_choice = selected
+            st.session_state[f"selected_choice_{q_index}"] = selected
             st.session_state.feedback_shown = True
             st.rerun()
     else:
         labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
         labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-        selected_index = labeled_choices.index(st.session_state["selected_choice"])
+        selected_choice_key = f"selected_choice_{q_index}"
+        selected_index = labeled_choices.index(st.session_state[selected_choice_key])
         your_answer = labels[selected_index]
         correct_answer = str(q['answer']).lower().strip()
         correct_index = labels.index(correct_answer)
