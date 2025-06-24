@@ -118,8 +118,9 @@ if q_index < NUM_QUESTIONS:
 
         if st.button("次の問題へ"):
             st.session_state.q_index += 1
-            del st.session_state[f"feedback_shown_{q_index}"]
-            del st.session_state[f"selected_choice_{q_index}"]
+            st.session_state.pop(f"feedback_shown_{q_index}", None)
+            st.session_state.pop(f"selected_choice_{q_index}", None)
+            st.rerun()
             st.rerun()
 
     time.sleep(1)
