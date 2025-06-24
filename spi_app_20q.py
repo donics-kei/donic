@@ -106,18 +106,5 @@ if q_index < NUM_QUESTIONS:
         time.sleep(1)
         st.rerun()
 
-    if remaining == 0:
-        st.error("時間切れ！未回答として次へ進みます")
-        st.session_state.answered.append({
-            "question": q['question'],
-            "your_answer": None,
-            "your_choice": None,
-            "correct_answer": str(q['answer']).lower().strip(),
-            "correct_choice": q[f"choice{ord(str(q['answer']).lower().strip()) - 96}"],
-            "correct": False,
-            "explanation": q.get("explanation", "")
-        })
-        st.session_state.q_index += 1
-        st.rerun()
-
+    
         # 重複定義の削除とインデント修正済み。以下のブロックは不要なので削除します。
