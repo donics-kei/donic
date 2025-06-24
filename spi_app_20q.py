@@ -115,8 +115,9 @@ if q_index < NUM_QUESTIONS:
             st.session_state.feedback_shown = False
             st.rerun()
 else:
-    time.sleep(1)
-    st.rerun()
+    if not st.session_state.get("feedback_shown", False):
+        time.sleep(1)
+        st.rerun()
 
 else:
     st.subheader(f"🎯 最終スコア：{st.session_state.score} / {NUM_QUESTIONS}")
