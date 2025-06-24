@@ -41,6 +41,13 @@ if q_index < NUM_QUESTIONS:
     q = questions.iloc[q_index]
     if not st.session_state.get("feedback_shown", False):
         st.subheader(f"Q{q_index + 1}: {q['question']}")
+        labels = ['a', 'b', 'c', 'd', 'e']
+        choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
+        labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
+        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
+        st.session_state.selected_choice = selected
+    else:
+        selected = None
 
     # タイムリミット取得
     try:
@@ -81,6 +88,8 @@ if q_index < NUM_QUESTIONS:
         selected = None
 
     if not st.session_state.get("feedback_shown", False) and selected:
+        st.session_state.selected_choice = selected
+        st.session_state.show_result = True
         selected_index = labeled_choices.index(selected)
         your_answer = labels[selected_index]
         correct_answer = str(q['answer']).lower().strip()
@@ -114,6 +123,26 @@ if q_index < NUM_QUESTIONS:
         st.stop()
 
     if st.session_state.get("feedback_shown", False):
+        selected = st.session_state.get("selected_choice")
+        if selected:
+            selected_index = labeled_choices.index(selected)
+            your_answer = labels[selected_index]
+            correct_answer = str(q['answer']).lower().strip()
+            correct_index = labels.index(correct_answer)
+            is_correct = your_answer == correct_answer
+            your_choice = choices[selected_index]
+            correct_choice = choices[correct_index]
+
+            if is_correct:
+                st.success("正解！")
+            else:
+                st.error("不正解")
+
+            st.markdown(f"**あなたの回答：{your_answer.upper()} - {your_choice}**")
+            st.markdown(f"**正解：{correct_answer.upper()} - {correct_choice}**")
+            if q.get("explanation"):
+                st.info(f"📘 解説：{q['explanation']}")
+
         if st.button("次の問題へ"):
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
