@@ -86,30 +86,7 @@ if q_index < NUM_QUESTIONS:
                     "correct_choice": correct_choice,
                     "correct": is_correct,
                     "explanation": q.get("explanation", "")
-                
-        if st.session_state.get("feedback_shown", False) and st.session_state.get("selected_choice"):
-            if st.button("次の問題へ"):
-                st.session_state.q_index += 1
-                st.session_state.feedback_shown = False
-                st.session_state.selected_choice = None
-                st.rerun()
-
-    # タイムリミット取得
-    try:
-        question_time_limit = int(q.get("time_limt", DEFAULT_TIME_LIMIT))
-    except:
-        question_time_limit = DEFAULT_TIME_LIMIT
-
-    # タイマー開始
-    if st.session_state.start_times[q_index] is None:
-        st.session_state.start_times[q_index] = time.time()
-
-    if not st.session_state.get("feedback_shown", False):
-        elapsed = time.time() - st.session_state.start_times[q_index]
-        remaining = int(question_time_limit - elapsed)
-        if remaining < 0:
-            remaining = 0
-        st.warning(f"⏳ 残り時間：{remaining} 秒")
+                })} 秒")
 
         
         # 自動リロードでカウントダウン更新
