@@ -68,20 +68,7 @@ if q_index < NUM_QUESTIONS:
             remaining = 0
         st.warning(f"⏳ 残り時間：{remaining} 秒")
 
-        if remaining == 0 and len(st.session_state.answered) <= q_index:
-            st.session_state.answered.append({
-                "question": q['question'],
-                "your_answer": None,
-                "your_choice": None,
-                "correct_answer": str(q['answer']).lower().strip(),
-                "correct_choice": q[f"choice{ord(str(q['answer']).lower().strip()) - 96}"],
-                "correct": False,
-                "explanation": q.get("explanation", "")
-            })
-            st.session_state.pop(f"feedback_shown_{q_index}", None)
-            st.session_state.pop(f"selected_choice_{q_index}", None)
-            st.session_state.q_index += 1
-            st.rerun()
+        
 
     if remaining == 0 and len(st.session_state.answered) <= q_index:
         st.session_state.answered.append({
