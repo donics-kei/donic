@@ -39,6 +39,7 @@ st.title(f"SPI模擬試験（{st.session_state.category}・{NUM_QUESTIONS}問）
 
 if q_index < NUM_QUESTIONS:
     q = questions.iloc[q_index]
+
     if not st.session_state.get("feedback_shown", False):
         st.subheader(f"Q{q_index + 1}: {q['question']}")
 
@@ -76,7 +77,7 @@ if q_index < NUM_QUESTIONS:
             st.session_state.selected_choice = selected
             st.session_state.feedback_shown = True
             st.rerun()
-else:
+    else:
         labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
         labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
