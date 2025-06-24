@@ -72,7 +72,7 @@ if q_index < NUM_QUESTIONS:
         st.rerun()
         
 
-      　　　　 labels = ['a', 'b', 'c', 'd', 'e']
+        labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
         labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
         selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
