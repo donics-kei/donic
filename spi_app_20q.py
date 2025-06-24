@@ -121,7 +121,6 @@ if q_index < NUM_QUESTIONS:
             st.session_state.pop(f"feedback_shown_{q_index}", None)
             st.session_state.pop(f"selected_choice_{q_index}", None)
             st.rerun()
-            st.rerun()
 
     time.sleep(1)
     st.rerun()
