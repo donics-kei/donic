@@ -86,7 +86,7 @@ if q_index < NUM_QUESTIONS:
                     "correct_choice": correct_choice,
                     "correct": is_correct,
                     "explanation": q.get("explanation", "")
-                })} 秒")
+                })
 
         
         # 自動リロードでカウントダウン更新
