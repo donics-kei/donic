@@ -62,11 +62,15 @@ if q_index < NUM_QUESTIONS:
     if remaining < 0:
         remaining = 0
 
-    # カウントダウン（再描画）
-    if not st.session_state.get(f"feedback_shown_{q_index}", False):
-        st.warning(f"⏳ 残り時間：{remaining} 秒")
-        time.sleep(1)
-        st.rerun()
+  # カウントダウンの表示（再描画を毎秒）
+if not st.session_state.get(f"feedback_shown_{q_index}", False):
+    st.warning(f"⏳ 残り時間：{remaining} 秒")
+    
+    # 1秒後に自動再実行（カウントダウン更新）
+    st.experimental_set_query_params(tick=str(time.time()))
+    time.sleep(1)
+    st.rerun()
+
 
     # 時間切れの処理
     if remaining == 0 and len(st.session_state.answered) <= q_index:
