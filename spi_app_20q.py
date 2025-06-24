@@ -12,6 +12,9 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
+if "page" not in st.session_state:
+    st.session_state.page = "select"
+
 # 空白ページ挿入処理
 if st.session_state.page == "blank":
     st.empty()
