@@ -89,9 +89,39 @@ if q_index < NUM_QUESTIONS:
                 })
 
         
-        # 自動リロードでカウントダウン更新
+        # カウントダウン表示
+        if st.session_state.start_times[q_index] is None:
+            st.session_state.start_times[q_index] = time.time()
+
+        elapsed = time.time() - st.session_state.start_times[q_index]
+        remaining = int(q.get("time_limt", 60) - elapsed)
+        if remaining < 0:
+            remaining = 0
+
+        st.warning(f"⏳ 残り時間：{remaining} 秒")
+
+        if remaining == 0 and len(st.session_state.answered) <= q_index:
+            st.session_state.answered.append({
+                "question": q['question'],
+                "your_answer": None,
+                "your_choice": None,
+                "correct_answer": str(q['answer']).lower().strip(),
+                "correct_choice": q[f"choice{ord(str(q['answer']).lower().strip()) - 96}"],
+                "correct": False,
+                "explanation": q.get("explanation", "")
+            })
+            st.session_state.q_index += 1
+            st.session_state.feedback_shown = False
+            st.session_state.selected_choice = None
+            st.rerun()
+
         time.sleep(1)
         st.rerun()
 
     
-        # 重複定義の削除とインデント修正済み。以下のブロックは不要なので削除します。
+                if st.session_state.get("feedback_shown", False) and st.session_state.get("selected_choice"):
+            if st.button("次の問題へ"):
+                st.session_state.q_index += 1
+                st.session_state.feedback_shown = False
+                st.session_state.selected_choice = None
+                st.rerun()
