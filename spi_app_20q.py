@@ -62,11 +62,13 @@ if q_index < NUM_QUESTIONS:
     if remaining < 0:
         remaining = 0
 
-    # タイムアウト時にページを強制リロード
+    # カウントダウン（再描画）
     if not st.session_state.get(f"feedback_shown_{q_index}", False):
         st.warning(f"⏳ 残り時間：{remaining} 秒")
-        st.experimental_rerun()
+        time.sleep(1)
+        st.rerun()
 
+    # 時間切れの処理
     if remaining == 0 and len(st.session_state.answered) <= q_index:
         st.session_state.answered.append({
             "question": q['question'],
@@ -81,8 +83,6 @@ if q_index < NUM_QUESTIONS:
         st.session_state.pop(f"selected_choice_{q_index}", None)
         st.session_state.q_index += 1
         st.rerun()
-
-    st.subheader(f"Q{q_index + 1}: {q['question']}")
 
     if not st.session_state.get(f"feedback_shown_{q_index}", False):
         labels = ['a', 'b', 'c', 'd', 'e']
@@ -134,6 +134,7 @@ if q_index < NUM_QUESTIONS:
             st.session_state.q_index += 1
             st.session_state.page = "blank"
             st.rerun()
+
 else:
     st.success("✅ すべての問題が終了しました！")
     st.metric("あなたの最終スコア", f"{st.session_state.score} / {NUM_QUESTIONS}")
