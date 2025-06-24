@@ -46,8 +46,43 @@ if q_index < NUM_QUESTIONS:
         labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
         selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
         st.session_state.selected_choice = selected
+        st.session_state.feedback_shown = True
     else:
         selected = None
+        if st.session_state.get("selected_choice"):
+            selected_index = labeled_choices.index(st.session_state["selected_choice"])
+            your_answer = labels[selected_index]
+            correct_answer = str(q['answer']).lower().strip()
+            correct_index = labels.index(correct_answer)
+            is_correct = your_answer == correct_answer
+            your_choice = choices[selected_index]
+            correct_choice = choices[correct_index]
+
+            if is_correct:
+                st.success("正解！")
+                st.session_state.score += 1
+            else:
+                st.error("不正解")
+
+            st.markdown(f"**あなたの回答：{your_answer.upper()} - {your_choice}**")
+            st.markdown(f"**正解：{correct_answer.upper()} - {correct_choice}**")
+            if q.get("explanation"):
+                st.info(f"📘 解説：{q['explanation']}")
+
+            st.session_state.answered.append({
+                "question": q['question'],
+                "your_answer": your_answer,
+                "your_choice": your_choice,
+                "correct_answer": correct_answer,
+                "correct_choice": correct_choice,
+                "correct": is_correct,
+                "explanation": q.get("explanation", "")
+            })
+
+            if st.button("次の問題へ"):
+                st.session_state.q_index += 1
+                st.session_state.feedback_shown = False
+                st.rerun()
 
     # タイムリミット取得
     try:
@@ -59,11 +94,30 @@ if q_index < NUM_QUESTIONS:
     if st.session_state.start_times[q_index] is None:
         st.session_state.start_times[q_index] = time.time()
 
-    elapsed = time.time() - st.session_state.start_times[q_index]
-    remaining = int(question_time_limit - elapsed)
-    if remaining < 0:
-        remaining = 0
-    st.warning(f"⏳ 残り時間：{remaining} 秒")
+    if not st.session_state.get("feedback_shown", False):
+        elapsed = time.time() - st.session_state.start_times[q_index]
+        remaining = int(question_time_limit - elapsed)
+        if remaining < 0:
+            remaining = 0
+        st.warning(f"⏳ 残り時間：{remaining} 秒")
+
+        if remaining == 0:
+            st.error("時間切れ！未回答として次へ進みます")
+            st.session_state.answered.append({
+                "question": q['question'],
+                "your_answer": None,
+                "your_choice": None,
+                "correct_answer": str(q['answer']).lower().strip(),
+                "correct_choice": q[f"choice{ord(str(q['answer']).lower().strip()) - 96}"],
+                "correct": False,
+                "explanation": q.get("explanation", "")
+            })
+            st.session_state.q_index += 1
+            st.rerun()
+
+        # 自動リロードでカウントダウン更新
+        time.sleep(1)
+        st.rerun()
 
     if remaining == 0:
         st.error("時間切れ！未回答として次へ進みます")
