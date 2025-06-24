@@ -86,7 +86,8 @@ if q_index < NUM_QUESTIONS:
                     "correct_choice": correct_choice,
                     "correct": is_correct,
                     "explanation": q.get("explanation", "")
-                })        if st.session_state.get("feedback_shown", False) and st.session_state.get("selected_choice"):
+                
+        if st.session_state.get("feedback_shown", False) and st.session_state.get("selected_choice"):
             if st.button("次の問題へ"):
                 st.session_state.q_index += 1
                 st.session_state.feedback_shown = False
