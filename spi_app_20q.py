@@ -86,9 +86,7 @@ if q_index < NUM_QUESTIONS:
                 })
 
         if st.button("次の問題へ"):
-            st.session_state.q_index += 1
-            st.session_state.feedback_shown = False
-            st.rerun()
+            
                 st.session_state.q_index += 1
                 st.session_state.feedback_shown = False
                 st.rerun()
