@@ -3,15 +3,19 @@ import pandas as pd
 import time
 import os
 
+NUM_QUESTIONS = None
+DEFAULT_TIME_LIMIT = None
+
 @st.cache_data
 def load_questions():
     BASE_DIR = os.path.dirname(__file__)
-    csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
+    csv_path = os.path.join(BASE_DIR, "spi_questions_with_images.csv")
     return pd.read_csv(csv_path)
 
 if "page" not in st.session_state:
     st.session_state.page = "select"
 
+# 空白ページ挿入処理
 if st.session_state.page == "blank":
     st.empty()
     time.sleep(0.1)
@@ -19,15 +23,15 @@ if st.session_state.page == "blank":
     st.rerun()
 
 if st.session_state.page == "select":
-    st.title("SPI模擬試験（ランダム出題）")
+    st.title("SPI演習：順番出題（問題数選択可）")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
     st.session_state.temp_num_questions = st.number_input("出題数を入力（最大50問程度）", min_value=1, max_value=100, value=20, step=1)
     if st.button("開始"):
         st.session_state.category = st.session_state.temp_category
         df = load_questions()
         filtered_df = df[df['category'] == st.session_state.category]
-        num_questions = int(st.session_state.temp_num_questions)
-        sample_size = min(num_questions, len(filtered_df))
+        NUM_QUESTIONS = int(st.session_state.temp_num_questions)
+        sample_size = min(NUM_QUESTIONS, len(filtered_df))
         st.session_state.questions = filtered_df.sample(n=sample_size).reset_index(drop=True)
         st.session_state.q_index = 0
         st.session_state.score = 0
@@ -65,7 +69,7 @@ if q_index < len(questions):
     if not st.session_state.get(f"feedback_shown_{q_index}", False):
         st.warning(f"⏳ 残り時間：{remaining} 秒")
 
-    if remaining == 0 and len(st.session_state.answered) <= q_index:
+    if remaining == 0 and len(st.session_state.get("answered", [])) <= q_index:
         st.session_state.answered.append({
             "question": q['question'],
             "your_answer": None,
