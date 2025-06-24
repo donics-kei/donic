@@ -61,11 +61,18 @@ if q_index < NUM_QUESTIONS:
         remaining = 0
 
     if not st.session_state.get(f"feedback_shown_{q_index}", False):
-        placeholder = st.empty()
-        placeholder.warning(f"⏳ 残り時間：{remaining} 秒")
+        if f"tick_{q_index}" not in st.session_state:
+            st.session_state[f"tick_{q_index}"] = time.time()
+
+        remaining = int(question_time_limit - (time.time() - st.session_state.start_times[q_index]))
+        if remaining < 0:
+            remaining = 0
+
+        st.empty().warning(f"⏳ 残り時間：{remaining} 秒")
+
         if remaining > 0:
             time.sleep(1)
-            st.experimental_rerun()
+            st.rerun()
 
     if remaining == 0 and len(st.session_state.answered) <= q_index:
         st.session_state.answered.append({
@@ -145,4 +152,3 @@ else:
     if st.button("もう一度解く"):
         del st.session_state.page
         st.rerun()
-
