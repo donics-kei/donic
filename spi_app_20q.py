@@ -68,10 +68,6 @@ if q_index < NUM_QUESTIONS:
             st.session_state.selected_choice = None
             st.rerun()
 
-        time.sleep(1)
-        st.rerun()
-        
-
         labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
         labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
@@ -80,7 +76,7 @@ if q_index < NUM_QUESTIONS:
             st.session_state.selected_choice = selected
             st.session_state.feedback_shown = True
             st.rerun()
-    else:
+else:
         labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
         labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
