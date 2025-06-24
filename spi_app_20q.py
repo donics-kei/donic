@@ -23,8 +23,6 @@ if st.session_state.page == "blank":
     st.rerun()
 
 # 初期化
-if "page" not in st.session_state:
-    st.session_state.page = "select"
 if st.session_state.page == "select":
     st.title("SPI演習：1問ずつ採点・20問版")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
@@ -62,17 +60,12 @@ if q_index < NUM_QUESTIONS:
     if remaining < 0:
         remaining = 0
 
-  # カウントダウンの表示（再描画を毎秒）
-if not st.session_state.get(f"feedback_shown_{q_index}", False):
-    st.warning(f"⏳ 残り時間：{remaining} 秒")
-    
-    # 1秒後に自動再実行（カウントダウン更新）
-    st.experimental_set_query_params(tick=str(time.time()))
-    time.sleep(1)
-    st.rerun()
+    if not st.session_state.get(f"feedback_shown_{q_index}", False):
+        st.warning(f"⏳ 残り時間：{remaining} 秒")
+        time.sleep(1)
+        st.experimental_set_query_params(tick=str(time.time()))
+        st.rerun()
 
-
-    # 時間切れの処理
     if remaining == 0 and len(st.session_state.answered) <= q_index:
         st.session_state.answered.append({
             "question": q['question'],
@@ -148,7 +141,6 @@ else:
     df_result.index = [f"Q{i+1}" for i in range(len(df_result))]
     st.dataframe(df_result)
 
-    # リトライオプション
     if st.button("もう一度解く"):
         del st.session_state.page
         st.rerun()
