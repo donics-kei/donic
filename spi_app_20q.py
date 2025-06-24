@@ -39,7 +39,8 @@ st.title(f"SPI模擬試験（{st.session_state.category}・{NUM_QUESTIONS}問）
 
 if q_index < NUM_QUESTIONS:
     q = questions.iloc[q_index]
-    st.subheader(f"Q{q_index + 1}: {q['question']}")
+    if not st.session_state.get("feedback_shown", False):
+        st.subheader(f"Q{q_index + 1}: {q['question']}")
 
     # タイムリミット取得
     try:
@@ -76,7 +77,7 @@ if q_index < NUM_QUESTIONS:
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
     selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
 
-    if selected and not st.session_state.get("feedback_shown", False):
+    if not st.session_state.get("feedback_shown", False) and selected:
         selected_index = labeled_choices.index(selected)
         your_answer = labels[selected_index]
         correct_answer = str(q['answer']).lower().strip()
