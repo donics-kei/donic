@@ -83,7 +83,7 @@ if q_index < NUM_QUESTIONS:
     choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
     if not st.session_state.get("feedback_shown", False):
-        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
+        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}_select")
     else:
         selected = None
 
