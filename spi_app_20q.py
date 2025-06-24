@@ -40,12 +40,42 @@ st.title(f"SPI模擬試験（{st.session_state.category}・{NUM_QUESTIONS}問）
 if q_index < NUM_QUESTIONS:
     q = questions.iloc[q_index]
     if not st.session_state.get("feedback_shown", False):
-                st.subheader(f"Q{q_index + 1}: {q['question']}")
+        st.subheader(f"Q{q_index + 1}: {q['question']}")
+
+        # カウントダウン表示
+        if st.session_state.start_times[q_index] is None:
+            st.session_state.start_times[q_index] = time.time()
+
+        elapsed = time.time() - st.session_state.start_times[q_index]
+        remaining = int(q.get("time_limt", 60) - elapsed)
+        if remaining < 0:
+            remaining = 0
+
+        st.warning(f"⏳ 残り時間：{remaining} 秒")
+
+        if remaining == 0 and len(st.session_state.answered) <= q_index:
+            st.session_state.answered.append({
+                "question": q['question'],
+                "your_answer": None,
+                "your_choice": None,
+                "correct_answer": str(q['answer']).lower().strip(),
+                "correct_choice": q[f"choice{ord(str(q['answer']).lower().strip()) - 96}"],
+                "correct": False,
+                "explanation": q.get("explanation", "")
+            })
+            st.session_state.q_index += 1
+            st.session_state.feedback_shown = False
+            st.session_state.selected_choice = None
+            st.rerun()
+
+        time.sleep(1)
+        st.rerun()
         
 
         time.sleep(1)
         st.rerun()
-        labels = ['a', 'b', 'c', 'd', 'e']
+
+    labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
         labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
         selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
