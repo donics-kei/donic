@@ -74,17 +74,21 @@ if q_index < NUM_QUESTIONS:
             if q.get("explanation"):
                 st.info(f"📘 解説：{q['explanation']}")
 
-            st.session_state.answered.append({
-                "question": q['question'],
-                "your_answer": your_answer,
-                "your_choice": your_choice,
-                "correct_answer": correct_answer,
-                "correct_choice": correct_choice,
-                "correct": is_correct,
-                "explanation": q.get("explanation", "")
-            })
+            if len(st.session_state.answered) <= q_index:
+                st.session_state.answered.append({
+                    "question": q['question'],
+                    "your_answer": your_answer,
+                    "your_choice": your_choice,
+                    "correct_answer": correct_answer,
+                    "correct_choice": correct_choice,
+                    "correct": is_correct,
+                    "explanation": q.get("explanation", "")
+                })
 
-            if st.button("次の問題へ"):
+        if st.button("次の問題へ"):
+            st.session_state.q_index += 1
+            st.session_state.feedback_shown = False
+            st.rerun()
                 st.session_state.q_index += 1
                 st.session_state.feedback_shown = False
                 st.rerun()
