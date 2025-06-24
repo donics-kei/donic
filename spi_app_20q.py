@@ -50,6 +50,9 @@ if q_index < NUM_QUESTIONS:
     else:
         selected = None
         if st.session_state.get("selected_choice"):
+            labels = ['a', 'b', 'c', 'd', 'e']
+            choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
+            labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
             selected_index = labeled_choices.index(st.session_state["selected_choice"])
             your_answer = labels[selected_index]
             correct_answer = str(q['answer']).lower().strip()
