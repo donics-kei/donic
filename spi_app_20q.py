@@ -54,18 +54,18 @@ st.title(f"SPI模擬試験（{st.session_state.category}・{NUM_QUESTIONS}問）
 if q_index < NUM_QUESTIONS:
     q = questions.iloc[q_index]
     question_time_limit = time_limits[q_index]
+    if st.session_state.start_times[q_index] is None:
+        st.session_state.start_times[q_index] = time.time()
+
+    elapsed = time.time() - st.session_state.start_times[q_index]
+    remaining = int(question_time_limit - elapsed)
+    if remaining < 0:
+        remaining = 0
     # 問題・解説処理
     st.subheader(f"Q{q_index + 1}: {q['question']}")
 
     # カウントダウン
     if not st.session_state.get(f"feedback_shown_{q_index}", False):
-        if st.session_state.start_times[q_index] is None:
-            st.session_state.start_times[q_index] = time.time()
-
-        elapsed = time.time() - st.session_state.start_times[q_index]
-        remaining = int(question_time_limit - elapsed)
-        if remaining < 0:
-            remaining = 0
         st.warning(f"⏳ 残り時間：{remaining} 秒")
 
         
