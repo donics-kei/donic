@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+import random
 
+# NUM_QUESTIONS はユーザー選択により決定される
 NUM_QUESTIONS = None
 DEFAULT_TIME_LIMIT = None
 
@@ -23,7 +25,7 @@ if st.session_state.page == "blank":
     st.rerun()
 
 if st.session_state.page == "select":
-    st.title("SPI演習：順番出題（問題数選択可）")
+    st.title("SPI演習：ランダム出題（問題数選択可）")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
     st.session_state.temp_num_questions = st.number_input("出題数を入力（最大50問程度）", min_value=1, max_value=100, value=20, step=1)
     if st.button("開始"):
@@ -32,7 +34,7 @@ if st.session_state.page == "select":
         filtered_df = df[df['category'] == st.session_state.category]
         NUM_QUESTIONS = int(st.session_state.temp_num_questions)
         sample_size = min(NUM_QUESTIONS, len(filtered_df))
-        st.session_state.questions = filtered_df.sample(n=sample_size).reset_index(drop=True)
+        st.session_state.questions = filtered_df.sample(n=sample_size, replace=False).reset_index(drop=True)
         st.session_state.q_index = 0
         st.session_state.score = 0
         st.session_state.answered = []
@@ -61,6 +63,7 @@ if q_index < len(questions):
 
     st.subheader(f"Q{q_index + 1}: {q['question']}")
 
+    # 画像があれば表示
     if 'image' in q and pd.notna(q['image']):
         image_path = os.path.join(os.path.dirname(__file__), q['image'])
         if os.path.exists(image_path):
@@ -69,7 +72,7 @@ if q_index < len(questions):
     if not st.session_state.get(f"feedback_shown_{q_index}", False):
         st.warning(f"⏳ 残り時間：{remaining} 秒")
 
-    if remaining == 0 and len(st.session_state.get("answered", [])) <= q_index:
+    if remaining == 0 and len(st.session_state.answered) <= q_index:
         st.session_state.answered.append({
             "question": q['question'],
             "your_answer": None,
