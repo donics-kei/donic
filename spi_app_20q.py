@@ -12,6 +12,13 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
+# 空白ページ挿入処理
+if st.session_state.page == "blank":
+    st.empty()
+    time.sleep(0.1)
+    st.session_state.page = "quiz"
+    st.rerun()
+
 # 初期化
 if "page" not in st.session_state:
     st.session_state.page = "select"
@@ -120,6 +127,7 @@ if q_index < NUM_QUESTIONS:
             st.session_state.pop(f"feedback_shown_{q_index}", None)
             st.session_state.pop(f"selected_choice_{q_index}", None)
             st.session_state.q_index += 1
+            st.session_state.page = "blank"
             st.rerun()
 
     time.sleep(1)
