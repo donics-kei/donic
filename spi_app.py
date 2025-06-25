@@ -2,147 +2,83 @@ import streamlit as st
 import pandas as pd
 import time
 import os
-import random
 
-# NUM_QUESTIONS はユーザー選択により決定される
-NUM_QUESTIONS = None
 DEFAULT_TIME_LIMIT = None
 
 @st.cache_data
 def load_questions():
     BASE_DIR = os.path.dirname(__file__)
-    csv_path = os.path.join(BASE_DIR, "spi_questions_with_images.csv")
+    csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
 if "page" not in st.session_state:
     st.session_state.page = "select"
 
-# 空白ページ挿入処理
-if st.session_state.page == "blank":
-    st.empty()
-    time.sleep(0.1)
-    st.session_state.page = "quiz"
-    st.rerun()
-
 if st.session_state.page == "select":
-    st.title("SPI演習：ランダム出題（問題数選択可）")
+    st.title("SPI演習：最後にまとめて採点・問題数選択版")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
-    st.session_state.temp_num_questions = st.number_input("出題数を入力（最大50問程度）", min_value=1, max_value=100, value=20, step=1)
+    st.session_state.temp_num = st.number_input("出題数を入力してください（最大40問程度）：", min_value=1, max_value=100, value=20, step=1)
     if st.button("開始"):
         st.session_state.category = st.session_state.temp_category
+        st.session_state.num_questions = st.session_state.temp_num
         df = load_questions()
         filtered_df = df[df['category'] == st.session_state.category]
-        NUM_QUESTIONS = int(st.session_state.temp_num_questions)
-        sample_size = min(NUM_QUESTIONS, len(filtered_df))
-        st.session_state.questions = filtered_df.sample(n=sample_size, replace=False).reset_index(drop=True)
+        sample_size = min(st.session_state.num_questions, len(filtered_df))
+        st.session_state.questions = filtered_df.sample(n=sample_size).reset_index(drop=True)
         st.session_state.q_index = 0
-        st.session_state.score = 0
-        st.session_state.answered = []
-        st.session_state.start_times = [None] * sample_size
+        st.session_state.answers = [None] * sample_size
         st.session_state.page = "quiz"
         st.rerun()
     st.stop()
 
 questions = st.session_state.questions
-q_index = st.session_state.q_index
-time_limit_col = 'time_limit' if 'time_limit' in questions.columns else 'time_limt'
-time_limits = questions[time_limit_col].fillna(60).astype(int).tolist()
+answers = st.session_state.answers
+num_questions = len(questions)
 
-st.title(f"SPI模擬試験（{st.session_state.category}・{len(questions)}問）")
+st.title(f"SPI模擬試験（{st.session_state.category}・{num_questions}問）")
+st.write("---")
 
-if q_index < len(questions):
-    q = questions.iloc[q_index]
-    question_time_limit = time_limits[q_index]
-    if st.session_state.start_times[q_index] is None:
-        st.session_state.start_times[q_index] = time.time()
+for i in range(num_questions):
+    q = questions.iloc[i]
+    st.subheader(f"Q{i+1}: {q['question']}")
+    labels = ['a', 'b', 'c', 'd', 'e']
+    choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
+    labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    elapsed = time.time() - st.session_state.start_times[q_index]
-    remaining = int(question_time_limit - elapsed)
-    if remaining < 0:
-        remaining = 0
+    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{i}", index=labels.index(answers[i]) if answers[i] in labels else -1)
+    if selected:
+        st.session_state.answers[i] = selected.split('.')[0]
 
-    st.subheader(f"Q{q_index + 1}: {q['question']}")
+if st.button("採点する"):
+    results = []
+    score = 0
+    for i in range(num_questions):
+        q = questions.iloc[i]
+        your_answer = st.session_state.answers[i]
+        correct_answer = str(q['answer']).lower().strip()
+        labels = ['a', 'b', 'c', 'd', 'e']
+        choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
+        correct_index = labels.index(correct_answer)
+        your_choice = choices[labels.index(your_answer)] if your_answer in labels else None
+        correct_choice = choices[correct_index]
+        correct = your_answer == correct_answer
+        if correct:
+            score += 1
 
-    # 画像があれば表示
-    if 'image' in q and pd.notna(q['image']):
-        image_path = os.path.join(os.path.dirname(__file__), q['image'])
-        if os.path.exists(image_path):
-            st.image(image_path, width=400)
-
-    if not st.session_state.get(f"feedback_shown_{q_index}", False):
-        st.warning(f"⏳ 残り時間：{remaining} 秒")
-
-    if remaining == 0 and len(st.session_state.answered) <= q_index:
-        st.session_state.answered.append({
+        results.append({
             "question": q['question'],
-            "your_answer": None,
-            "your_choice": None,
-            "correct_answer": str(q['answer']).lower().strip(),
-            "correct_choice": q[f"choice{ord(str(q['answer']).lower().strip()) - 96}"],
-            "correct": False,
+            "your_answer": your_answer,
+            "your_choice": your_choice,
+            "correct_answer": correct_answer,
+            "correct_choice": correct_choice,
+            "correct": correct,
             "explanation": q.get("explanation", "")
         })
-        st.session_state.pop(f"feedback_shown_{q_index}", None)
-        st.session_state.pop(f"selected_choice_{q_index}", None)
-        st.session_state.q_index += 1
-        st.rerun()
 
-    if not st.session_state.get(f"feedback_shown_{q_index}", False):
-        labels = ['a', 'b', 'c', 'd', 'e']
-        choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
-        labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
-        if st.button("回答する"):
-            st.session_state[f"selected_choice_{q_index}"] = selected
-            st.session_state[f"feedback_shown_{q_index}"] = True
-            st.rerun()
-    else:
-        labels = ['a', 'b', 'c', 'd', 'e']
-        choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
-        labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-        selected_choice_key = f"selected_choice_{q_index}"
-        selected_index = labeled_choices.index(st.session_state[selected_choice_key])
-        your_answer = labels[selected_index]
-        correct_answer = str(q['answer']).lower().strip()
-        correct_index = labels.index(correct_answer)
-        is_correct = your_answer == correct_answer
-        your_choice = choices[selected_index]
-        correct_choice = choices[correct_index]
-
-        if is_correct:
-            st.success("正解！")
-            st.session_state.score += 1
-        else:
-            st.error("不正解")
-
-        st.markdown(f"**あなたの回答：{your_answer.upper()} - {your_choice}**")
-        st.markdown(f"**正解：{correct_answer.upper()} - {correct_choice}**")
-        if q.get("explanation"):
-            st.info(f"📘 解説：{q['explanation']}")
-
-        if len(st.session_state.answered) <= q_index:
-            st.session_state.answered.append({
-                "question": q['question'],
-                "your_answer": your_answer,
-                "your_choice": your_choice,
-                "correct_answer": correct_answer,
-                "correct_choice": correct_choice,
-                "correct": is_correct,
-                "explanation": q.get("explanation", "")
-            })
-
-        if st.button("次の問題へ"):
-            st.session_state.pop(f"feedback_shown_{q_index}", None)
-            st.session_state.pop(f"selected_choice_{q_index}", None)
-            st.session_state.q_index += 1
-            st.session_state.page = "blank"
-            st.rerun()
-else:
-    st.success("✅ すべての問題が終了しました！")
-    st.metric("あなたの最終スコア", f"{st.session_state.score} / {len(questions)}")
-    st.markdown("---")
-    st.subheader("詳細結果：")
-    df_result = pd.DataFrame(st.session_state.answered)
+    st.success(f"あなたのスコアは {score} / {num_questions} 点です")
+    st.write("---")
+    st.subheader("詳細結果")
+    df_result = pd.DataFrame(results)
     df_result.index = [f"Q{i+1}" for i in range(len(df_result))]
     st.dataframe(df_result)
 
