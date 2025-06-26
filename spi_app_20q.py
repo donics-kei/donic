@@ -15,6 +15,14 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
+# 中間ページ（blank）を挟んで前の出力をクリア
+if st.session_state.get("page") == "blank":
+    st.empty()
+    time.sleep(0.1)
+    st.session_state.page = "quiz"
+    st.rerun()
+
+# 初期化
 if "page" not in st.session_state:
     st.session_state.page = "quiz"
     st.session_state.category = "言語"
@@ -56,6 +64,7 @@ if q_index < num_questions:
         st.session_state.answers[q_index] = None
         st.session_state.q_index += 1
         st.session_state.feedback_shown = False
+        st.session_state.page = "blank"
         st.rerun()
 
     st.subheader(f"Q{q_index + 1}: {q['question']}")
@@ -88,10 +97,7 @@ if q_index < num_questions:
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
             st.session_state.pop(f"choice_{q_index}", None)
-            # 前の問題の選択肢と表示内容をクリア
-            for key in list(st.session_state.keys()):
-                if key.startswith("choice_") or key.startswith("radio"):
-                    del st.session_state[key]
+            st.session_state.page = "blank"
             st.rerun()
 
     time.sleep(1)
