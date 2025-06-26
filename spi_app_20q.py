@@ -18,10 +18,8 @@ def load_questions():
 # blankページで一度状態をリセット
 if st.session_state.get("page") == "blank":
     for key in list(st.session_state.keys()):
-        if key.startswith("choice_") or key.startswith("feedback_shown_"):
+        if key.startswith("choice_") or key.startswith("feedback_shown_") or key.startswith("selected_choice_"):
             del st.session_state[key]
-    st.empty()
-    time.sleep(0.1)
     st.session_state.page = "quiz"
     st.rerun()
 
@@ -84,20 +82,32 @@ if q_index < num_questions:
             correct_choice = choices[labels.index(correct_answer)] if correct_answer in labels else "不明"
             your_choice = choices[selected_index]
 
-            if correct:
-                st.success("正解！")
-            else:
-                st.error("不正解")
+            st.session_state[f"feedback_data_{q_index}"] = {
+                "correct": correct,
+                "your_choice": your_choice,
+                "correct_answer": correct_answer,
+                "correct_choice": correct_choice,
+                "explanation": q.get("explanation", "")
+            }
 
-            st.markdown(f"あなたの回答：{labels[selected_index].upper()} - {your_choice}")
-            st.markdown(f"正解：{correct_answer.upper()} - {correct_choice}")
-            if q.get("explanation"):
-                st.info(f"📘 解説：{q['explanation']}")
             st.session_state[feedback_key] = True
+            st.rerun()
 
-    elif st.button("次の問題へ"):
-        st.session_state.page = "blank"
-        st.rerun()
+    elif st.session_state.get(feedback_key):
+        feedback = st.session_state.get(f"feedback_data_{q_index}", {})
+        if feedback.get("correct"):
+            st.success("正解！")
+        else:
+            st.error("不正解")
+        st.markdown(f"あなたの回答：{st.session_state.answers[q_index].upper()} - {feedback.get('your_choice')}")
+        st.markdown(f"正解：{feedback.get('correct_answer').upper()} - {feedback.get('correct_choice')}")
+        if feedback.get("explanation"):
+            st.info(f"📘 解説：{feedback['explanation']}")
+
+        if st.button("次の問題へ"):
+            st.session_state.q_index += 1
+            st.session_state.page = "blank"
+            st.rerun()
 
     time.sleep(1)
     st.rerun()
