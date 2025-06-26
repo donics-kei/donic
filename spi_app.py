@@ -16,12 +16,14 @@ if "page" not in st.session_state:
 
 # 初期画面
 if st.session_state.page == "select":
-    st.title("SPI模擬試験：選択式・最後に採点")
+    st.title("SPI模擬試験：採点モード選択式")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
     st.session_state.temp_num_questions = st.number_input("出題数を入力してください（最大50問）", min_value=1, max_value=50, value=20, step=1)
+    st.session_state.temp_mode = st.radio("採点方法を選んでください：", ["最後にまとめて採点", "その都度採点"])
     if st.button("開始"):
         st.session_state.category = st.session_state.temp_category
         st.session_state.num_questions = st.session_state.temp_num_questions
+        st.session_state.mode = st.session_state.temp_mode
         df = load_questions()
         filtered_df = df[df['category'] == st.session_state.category]
         sample_size = min(st.session_state.num_questions, len(filtered_df))
@@ -71,8 +73,29 @@ if q_index < num_questions:
     if st.button("次へ"):
         selected_index = labeled_choices.index(selected)
         st.session_state.answers[q_index] = labels[selected_index]
-        st.session_state.q_index += 1
-        st.rerun()
+
+        if st.session_state.mode == "その都度採点":
+            correct_answer = str(q['answer']).lower().strip()
+            correct = st.session_state.answers[q_index] == correct_answer
+            correct_choice = choices[labels.index(correct_answer)] if correct_answer in labels else "不明"
+            your_choice = choices[selected_index]
+
+            if correct:
+                st.success("正解！")
+            else:
+                st.error("不正解")
+
+            st.markdown(f"あなたの回答：{labels[selected_index].upper()} - {your_choice}")
+            st.markdown(f"正解：{correct_answer.upper()} - {correct_choice}")
+            if q.get("explanation"):
+                st.info(f"📘 解説：{q['explanation']}")
+
+            if st.button("次の問題へ"):
+                st.session_state.q_index += 1
+                st.rerun()
+        else:
+            st.session_state.q_index += 1
+            st.rerun()
 
     time.sleep(1)
     st.rerun()
