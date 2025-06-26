@@ -20,6 +20,8 @@ if "feedback_shown" not in st.session_state:
     st.session_state.feedback_shown = False
 if "answers" not in st.session_state:
     st.session_state.answers = []
+if "cleared_feedback" not in st.session_state:
+    st.session_state.cleared_feedback = False
 
 if st.session_state.page == "select":
     st.title("SPI試験対策")
@@ -48,6 +50,10 @@ num_questions = st.session_state.num_questions
 st.title(f"SPI模擬試験（{st.session_state.category}・{num_questions}問）")
 
 if q_index < num_questions:
+    if st.session_state.mode == "その都度採点" and not st.session_state.feedback_shown and st.session_state.cleared_feedback:
+        st.session_state.cleared_feedback = False
+        st.rerun()
+
     q = questions.iloc[q_index]
     time_limit_col = 'time_limit' if 'time_limit' in q else 'time_limt'
     try:
@@ -69,6 +75,7 @@ if q_index < num_questions:
         st.session_state.answers[q_index] = None
         st.session_state.q_index += 1
         st.session_state.feedback_shown = False
+        st.session_state.cleared_feedback = True
         st.rerun()
 
     st.subheader(f"Q{q_index + 1}: {q['question']}")
@@ -104,6 +111,7 @@ if q_index < num_questions:
         if st.button("次の問題へ"):
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
+            st.session_state.cleared_feedback = True
             st.session_state.pop(f"choice_{q_index}", None)
             st.rerun()
 
@@ -113,7 +121,7 @@ if q_index < num_questions:
 else:
     st.subheader("採点結果")
     score = 0
-    st.session_state.result_displayed = []
+    results = []
     for i, q in questions.iterrows():
         your_answer = st.session_state.answers[i]
         correct_answer = str(q['answer']).lower().strip()
@@ -128,25 +136,15 @@ else:
         correct = your_answer == correct_answer
         if correct:
             score += 1
-
-        st.session_state.result_displayed.append({
-            "index": i,
-            "question": q['question'],
-            "your_answer": your_answer,
-            "your_choice": your_choice,
-            "correct_answer": correct_answer,
-            "correct_choice": correct_choice,
-            "correct": correct,
-            "explanation": q.get("explanation", "")
-        })
+        results.append((i + 1, q['question'], your_answer, your_choice, correct_answer, correct_choice, correct, q.get("explanation", "")))
 
     st.success(f"🎯 最終スコア：{score} / {num_questions}")
-    for result in st.session_state.result_displayed:
-        st.markdown(f"**Q{result['index']+1}: {result['question']}** {'✅ 正解' if result['correct'] else '❌ 不正解'}")
-        st.markdown(f"あなたの回答：{result['your_answer'].upper() if result['your_answer'] else '未回答'} - {result['your_choice']}")
-        st.markdown(f"正解：{result['correct_answer'].upper()} - {result['correct_choice']}")
-        if result['explanation']:
-            st.markdown(f"📘 解説：{result['explanation']}")
+    for i, question, ya, yc, ca, cc, correct, exp in results:
+        st.markdown(f"**Q{i}: {question}** {'✅ 正解' if correct else '❌ 不正解'}")
+        st.markdown(f"あなたの回答：{ya.upper() if ya else '未回答'} - {yc}")
+        st.markdown(f"正解：{ca.upper()} - {cc}")
+        if exp:
+            st.markdown(f"📘 解説：{exp}")
         st.markdown("---")
 
     if st.button("もう一度解く"):
