@@ -36,8 +36,8 @@ if "page" not in st.session_state:
     st.session_state.answers = [None] * st.session_state.num_questions
     st.session_state.q_index = 0
     st.session_state.start_times = [None] * st.session_state.num_questions
-    st.session_state.mode = "その部度採点"
-    st.session_state.feedback_shown = False
+    st.session_state.mode = "その都度採点"
+    st.session_state[f"feedback_shown_0"] = False
 
 questions = st.session_state.questions
 q_index = st.session_state.q_index
@@ -62,11 +62,11 @@ if q_index < num_questions:
         remaining = 0
     st.warning(f"⏳ 残り時間：{remaining} 秒")
 
-    if remaining == 0 and not st.session_state.feedback_shown:
+    feedback_key = f"feedback_shown_{q_index}"
+    if remaining == 0 and not st.session_state.get(feedback_key, False):
         st.error("時間切れ！未回答として次へ進みます")
         st.session_state.answers[q_index] = None
         st.session_state.q_index += 1
-        st.session_state.feedback_shown = False
         st.session_state.page = "blank"
         st.rerun()
 
@@ -76,7 +76,7 @@ if q_index < num_questions:
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
     selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"choice_{q_index}")
 
-    if not st.session_state.feedback_shown:
+    if not st.session_state.get(feedback_key, False):
         if st.button("回答する"):
             selected_index = labeled_choices.index(selected)
             st.session_state.answers[q_index] = labels[selected_index]
@@ -94,12 +94,10 @@ if q_index < num_questions:
             st.markdown(f"正解：{correct_answer.upper()} - {correct_choice}")
             if q.get("explanation"):
                 st.info(f"📘 解説：{q['explanation']}")
-            st.session_state.feedback_shown = True
+            st.session_state[feedback_key] = True
     else:
         if st.button("次の問題へ"):
             st.session_state.q_index += 1
-            st.session_state.feedback_shown = False
-            st.session_state.pop(f"choice_{q_index}", None)
             st.session_state.page = "blank"
             st.rerun()
 
