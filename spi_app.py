@@ -86,8 +86,11 @@ else:
         correct_answer = str(q['answer']).lower().strip()
         labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q[f'choice{j+1}']) for j in range(5)]
-        correct_index = labels.index(correct_answer)
-        correct_choice = choices[correct_index]
+        try:
+            correct_index = labels.index(correct_answer)
+        except ValueError:
+            correct_index = -1
+        correct_choice = choices[correct_index] if correct_index != -1 else "不明"
         your_choice = choices[labels.index(your_answer)] if your_answer in labels else None
         correct = your_answer == correct_answer
         if correct:
