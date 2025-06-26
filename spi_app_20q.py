@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# ロゴの表示
+# ロゴの表示と背景色
 st.markdown('<style>body { background-color: #E0F7FA; }</style>', unsafe_allow_html=True)
 st.image("nics_logo.png", width=300)
 
@@ -15,10 +15,10 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
-# 中間ページ（blank）を挟んで前の出力をクリア
+# blankページで一度状態をリセット
 if st.session_state.get("page") == "blank":
     for key in list(st.session_state.keys()):
-        if key.startswith("choice_") or key.startswith("feedback_"):
+        if key.startswith("choice_") or key.startswith("feedback_shown_"):
             del st.session_state[key]
     st.empty()
     time.sleep(0.1)
@@ -36,14 +36,13 @@ if "page" not in st.session_state:
     st.session_state.answers = [None] * st.session_state.num_questions
     st.session_state.q_index = 0
     st.session_state.start_times = [None] * st.session_state.num_questions
-    st.session_state.mode = "その都度採点"
     st.session_state[f"feedback_shown_0"] = False
 
 questions = st.session_state.questions
 q_index = st.session_state.q_index
 num_questions = st.session_state.num_questions
 
-st.title(f"SPI試験対策 (言語 20問)")
+st.title(f"SPI試験対策（言語 20問）")
 
 if q_index < num_questions:
     q = questions.iloc[q_index]
@@ -95,12 +94,10 @@ if q_index < num_questions:
             if q.get("explanation"):
                 st.info(f"📘 解説：{q['explanation']}")
             st.session_state[feedback_key] = True
-    else:
-        if st.button("次の問題へ"):
-            del st.session_state[feedback_key]
-            st.session_state.q_index += 1
-            st.session_state.page = "blank"
-            st.rerun()
+
+    elif st.button("次の問題へ"):
+        st.session_state.page = "blank"
+        st.rerun()
 
     time.sleep(1)
     st.rerun()
