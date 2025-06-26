@@ -115,7 +115,7 @@ if q_index < num_questions:
             st.info(f"📘 解説：{feedback['explanation']}")
 
         if st.button("次の問題へ"):
-    for k in list(st.session_state.keys()):
+        for k in list(st.session_state.keys()):
         if k.startswith("choice_") or k.startswith("feedback_shown_") or k.startswith("selected_choice_") or k.startswith("feedback_data_"):
             del st.session_state[k]
     st.session_state.q_index += 1
