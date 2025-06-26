@@ -3,6 +3,7 @@ import pandas as pd
 import time
 import os
 
+NUM_QUESTIONS = 20
 DEFAULT_TIME_LIMIT = None
 
 @st.cache_data
@@ -15,12 +16,12 @@ if "page" not in st.session_state:
     st.session_state.page = "select"
 
 if st.session_state.page == "select":
-    st.title("SPI演習：最後にまとめて採点・問題数選択版")
+    st.title("SPI演習：最後にまとめて採点・出題数選択版")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
-    st.session_state.temp_num = st.number_input("出題数を入力してください（最大40問程度）：", min_value=1, max_value=100, value=20, step=1)
+    st.session_state.temp_num_questions = st.number_input("出題数を選んでください：", min_value=1, max_value=100, value=20, step=1)
     if st.button("開始"):
         st.session_state.category = st.session_state.temp_category
-        st.session_state.num_questions = st.session_state.temp_num
+        st.session_state.num_questions = st.session_state.temp_num_questions
         df = load_questions()
         filtered_df = df[df['category'] == st.session_state.category]
         sample_size = min(st.session_state.num_questions, len(filtered_df))
@@ -45,7 +46,11 @@ for i in range(num_questions):
     choices = [str(q['choice1']), str(q['choice2']), str(q['choice3']), str(q['choice4']), str(q['choice5'])]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{i}", index=labels.index(answers[i]) if answers[i] in labels else -1)
+    if answers[i] in labels:
+        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{i}", index=labels.index(answers[i]))
+    else:
+        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{i}")
+
     if selected:
         st.session_state.answers[i] = selected.split('.')[0]
 
