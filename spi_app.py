@@ -1,7 +1,10 @@
 import streamlit as st
+st.markdown('<style>body { background-color: #E0F7FA; }</style>', unsafe_allow_html=True)
 import pandas as pd
 import time
 import os
+
+st.image("nics_logo.png", width=300)
 
 DEFAULT_TIME_LIMIT = 60  # デフォルトの時間制限（秒）
 
@@ -73,8 +76,29 @@ if q_index < num_questions:
     if st.button("次へ"):
         selected_index = labeled_choices.index(selected)
         st.session_state.answers[q_index] = labels[selected_index]
-        st.session_state.q_index += 1
-        st.rerun()
+
+        if st.session_state.mode == "その都度採点":
+            correct_answer = str(q['answer']).lower().strip()
+            correct = st.session_state.answers[q_index] == correct_answer
+            correct_choice = choices[labels.index(correct_answer)] if correct_answer in labels else "不明"
+            your_choice = choices[selected_index]
+
+            if correct:
+                st.success("正解！")
+            else:
+                st.error("不正解")
+
+            st.markdown(f"あなたの回答：{labels[selected_index].upper()} - {your_choice}")
+            st.markdown(f"正解：{correct_answer.upper()} - {correct_choice}")
+            if q.get("explanation"):
+                st.info(f"📘 解説：{q['explanation']}")
+
+            if st.button("次の問題へ"):
+                st.session_state.q_index += 1
+                st.rerun()
+        else:
+            st.session_state.q_index += 1
+            st.rerun()
 
     time.sleep(1)
     st.rerun()
