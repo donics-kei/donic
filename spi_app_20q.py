@@ -17,6 +17,9 @@ def load_questions():
 
 # 中間ページ（blank）を挟んで前の出力をクリア
 if st.session_state.get("page") == "blank":
+    for key in list(st.session_state.keys()):
+        if key.startswith("choice_") or key.startswith("feedback_"):
+            del st.session_state[key]
     st.empty()
     time.sleep(0.1)
     st.session_state.page = "quiz"
