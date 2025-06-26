@@ -99,6 +99,10 @@ if q_index < num_questions:
             st.session_state[feedback_key] = True
             st.rerun()
 
+        # ⏱ カウントダウン中だけ sleep & rerun
+        time.sleep(1)
+        st.rerun()
+
     elif st.session_state.get(feedback_key):
         feedback = st.session_state.get(f"feedback_data_{q_index}", {})
         if feedback.get("correct"):
@@ -114,9 +118,6 @@ if q_index < num_questions:
             st.session_state.q_index += 1
             st.session_state.page = "blank"
             st.rerun()
-
-    time.sleep(1)
-    st.rerun()
 
 else:
     st.subheader("採点結果")
