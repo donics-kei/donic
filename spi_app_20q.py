@@ -97,6 +97,7 @@ if q_index < num_questions:
             st.session_state[feedback_key] = True
     else:
         if st.button("次の問題へ"):
+            del st.session_state[feedback_key]
             st.session_state.q_index += 1
             st.session_state.page = "blank"
             st.rerun()
