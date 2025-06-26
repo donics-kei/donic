@@ -88,6 +88,10 @@ if q_index < num_questions:
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
             st.session_state.pop(f"choice_{q_index}", None)
+            # 前の問題の選択肢と表示内容をクリア
+            for key in list(st.session_state.keys()):
+                if key.startswith("choice_") or key.startswith("radio"):
+                    del st.session_state[key]
             st.rerun()
 
     time.sleep(1)
