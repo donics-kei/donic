@@ -27,7 +27,7 @@ if st.session_state.get("page") == "blank":
     for k in keys_to_clear:
         del st.session_state[k]
     st.session_state.page = "quiz"
-    st.experimental_rerun()
+    st.rerun()
 
 # 初期化
 if "page" not in st.session_state:
@@ -71,7 +71,7 @@ if q_index < num_questions:
         st.session_state.answers[q_index] = None
         st.session_state.q_index += 1
         st.session_state.page = "blank"
-        st.experimental_rerun()
+        st.rerun()
 
     st.subheader(f"Q{q_index + 1}: {q['question']}")
     labels = ['a', 'b', 'c', 'd', 'e']
@@ -97,7 +97,7 @@ if q_index < num_questions:
             }
 
             st.session_state[feedback_key] = True
-            st.experimental_rerun()
+            st.rerun()
 
     elif st.session_state.get(feedback_key):
         feedback = st.session_state.get(f"feedback_data_{q_index}", {})
@@ -113,10 +113,10 @@ if q_index < num_questions:
         if st.button("次の問題へ"):
             st.session_state.q_index += 1
             st.session_state.page = "blank"
-            st.experimental_rerun()
+            st.rerun()
 
     time.sleep(1)
-    st.experimental_rerun()
+    st.rerun()
 
 else:
     st.subheader("採点結果")
@@ -148,4 +148,4 @@ else:
     if st.button("もう一度解く"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
-        st.experimental_rerun()
+        st.rerun()
