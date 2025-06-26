@@ -14,6 +14,7 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
+# セッション状態の初期化
 if "page" not in st.session_state:
     st.session_state.page = "select"
 if "feedback_shown" not in st.session_state:
@@ -21,6 +22,7 @@ if "feedback_shown" not in st.session_state:
 if "answers" not in st.session_state:
     st.session_state.answers = []
 
+# 選択画面
 if st.session_state.page == "select":
     st.title("SPI試験対策")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
@@ -29,21 +31,21 @@ if st.session_state.page == "select":
     if st.button("開始"):
         st.session_state.category = st.session_state.temp_category
         st.session_state.num_questions = st.session_state.temp_num_questions
+        st.session_state.mode = st.session_state.temp_mode
         df = load_questions()
         filtered = df[df['category'] == st.session_state.category]
         st.session_state.questions = filtered.sample(min(len(filtered), st.session_state.num_questions)).reset_index(drop=True)
         st.session_state.answers = [None] * st.session_state.num_questions
         st.session_state.q_index = 0
         st.session_state.start_times = [None] * st.session_state.num_questions
-        st.session_state.mode = st.session_state.temp_mode
         st.session_state.page = "quiz"
-        st.session_state.feedback_shown = False
         st.rerun()
     st.stop()
 
 questions = st.session_state.questions
 q_index = st.session_state.q_index
 num_questions = st.session_state.num_questions
+mode = st.session_state.mode
 
 st.title(f"SPI模擬試験（{st.session_state.category}・{num_questions}問）")
 
@@ -75,23 +77,21 @@ if q_index < num_questions:
     labels = ['a', 'b', 'c', 'd', 'e']
     choices = [str(q[f'choice{i+1}']) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"choice_{q_index}")
+
+    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
 
     if not st.session_state.feedback_shown:
         if st.button("回答する"):
             selected_index = labeled_choices.index(selected)
             st.session_state.answers[q_index] = labels[selected_index]
-            if st.session_state.mode == "その都度採点":
+            if mode == "その都度採点":
                 correct_answer = str(q['answer']).lower().strip()
-                correct = st.session_state.answers[q_index] == correct_answer
                 correct_choice = choices[labels.index(correct_answer)] if correct_answer in labels else "不明"
                 your_choice = choices[selected_index]
-
-                if correct:
+                if labels[selected_index] == correct_answer:
                     st.success("正解！")
                 else:
                     st.error("不正解")
-
                 st.markdown(f"あなたの回答：{labels[selected_index].upper()} - {your_choice}")
                 st.markdown(f"正解：{correct_answer.upper()} - {correct_choice}")
                 if q.get("explanation"):
@@ -100,11 +100,11 @@ if q_index < num_questions:
             else:
                 st.session_state.q_index += 1
                 st.rerun()
-    else:
+    elif mode == "その都度採点":
         if st.button("次の問題へ"):
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
-            st.session_state.pop(f"choice_{q_index}", None)
+            st.session_state.pop(f"q{q_index}", None)
             st.rerun()
 
     time.sleep(1)
