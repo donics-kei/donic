@@ -18,6 +18,8 @@ if "page" not in st.session_state:
     st.session_state.page = "select"
 if "feedback_shown" not in st.session_state:
     st.session_state.feedback_shown = False
+if "answers" not in st.session_state:
+    st.session_state.answers = []
 
 if st.session_state.page == "select":
     st.title("SPI試験対策")
@@ -73,7 +75,7 @@ if q_index < num_questions:
     labels = ['a', 'b', 'c', 'd', 'e']
     choices = [str(q[f'choice{i+1}']) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"q{q_index}")
+    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"choice_{q_index}")
 
     if not st.session_state.feedback_shown:
         if st.button("回答する"):
@@ -102,6 +104,7 @@ if q_index < num_questions:
         if st.button("次の問題へ"):
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
+            st.session_state.pop(f"choice_{q_index}", None)
             st.rerun()
 
     time.sleep(1)
