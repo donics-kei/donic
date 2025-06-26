@@ -101,7 +101,7 @@ if q_index < num_questions:
 
         # ⏱ カウントダウン中だけ sleep & rerun
         time.sleep(1)
-        st.rerun()
+        st.rerun()  # カウントダウン中のみ
 
     elif st.session_state.get(feedback_key):
         feedback = st.session_state.get(f"feedback_data_{q_index}", {})
@@ -115,9 +115,12 @@ if q_index < num_questions:
             st.info(f"📘 解説：{feedback['explanation']}")
 
         if st.button("次の問題へ"):
-            st.session_state.q_index += 1
-            st.session_state.page = "blank"
-            st.rerun()
+    for k in list(st.session_state.keys()):
+        if k.startswith("choice_") or k.startswith("feedback_shown_") or k.startswith("selected_choice_") or k.startswith("feedback_data_"):
+            del st.session_state[k]
+    st.session_state.q_index += 1
+    st.session_state.page = "blank"
+    st.rerun()
 
 else:
     st.subheader("採点結果")
