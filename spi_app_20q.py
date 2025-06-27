@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# 背景とロゴ表示
+# ロゴの表示と背景色
 st.markdown('<style>body { background-color: #E0F7FA; }</style>', unsafe_allow_html=True)
 st.image("nics_logo.png", width=300)
 
@@ -15,11 +15,18 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
-# blank ページで状態リセット
+# blankページで一度状態をリセット
 if st.session_state.get("page") == "blank":
     for k in list(st.session_state.keys()):
         if k.startswith("choice_") or k.startswith("feedback_shown_") or k.startswith("selected_choice_") or k.startswith("feedback_data_"):
             del st.session_state[k]
+    st.session_state.page = "quiz"
+    st.rerun()
+
+# 再初期化リクエスト処理
+if st.session_state.get("page") == "reset":
+    for k in list(st.session_state.keys()):
+        del st.session_state[k]
     st.session_state.page = "quiz"
     st.rerun()
 
@@ -40,7 +47,7 @@ questions = st.session_state.questions
 q_index = st.session_state.q_index
 num_questions = st.session_state.num_questions
 
-st.title("SPI試験対策（言語 20問）")
+st.title(f"SPI試験対策（言語 20問）")
 
 if q_index < num_questions:
     q = questions.iloc[q_index]
@@ -55,8 +62,8 @@ if q_index < num_questions:
 
     elapsed = time.time() - st.session_state.start_times[q_index]
     remaining = int(time_limit - elapsed)
-    remaining = max(0, remaining)
-
+    if remaining < 0:
+        remaining = 0
     st.warning(f"⏳ 残り時間：{remaining} 秒")
 
     feedback_key = f"feedback_shown_{q_index}"
@@ -72,11 +79,8 @@ if q_index < num_questions:
     choices = [str(q[f'choice{i+1}']) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    feedback_container = st.empty()
-
     if not st.session_state.get(feedback_key, False):
-        selected = st.radio("選択肢を選んでください：", labeled_choices, index=None, key=f"selection_{q_index}")
-
+        selected = st.radio("選択肢を選んでください：", labeled_choices, index=None, key=f"selection_{q_index}_{time.time()}")
         if st.button("回答する") and selected:
             selected_index = labeled_choices.index(selected)
             st.session_state.answers[q_index] = labels[selected_index]
@@ -95,29 +99,25 @@ if q_index < num_questions:
 
             st.session_state[feedback_key] = True
             st.rerun()
-        else:
-            # 1秒ごとに手動で再描画（カウントダウン更新）
-            time.sleep(1)
-            st.rerun()
+
+        time.sleep(1)
+        st.rerun()
 
     else:
-        with feedback_container.container():
-            feedback = st.session_state.get(f"feedback_data_{q_index}", {})
-            if feedback.get("correct"):
-                st.success("正解！")
-            else:
-                st.error("不正解")
+        feedback = st.session_state.get(f"feedback_data_{q_index}", {})
+        if feedback.get("correct"):
+            st.success("正解！")
+        else:
+            st.error("不正解")
+        st.markdown(f"あなたの回答：{st.session_state.answers[q_index].upper()} - {feedback.get('your_choice')}")
+        st.markdown(f"正解：{feedback.get('correct_answer').upper()} - {feedback.get('correct_choice')}")
+        if feedback.get("explanation"):
+            st.info(f"📘 解説：{feedback['explanation']}")
 
-            st.markdown(f"あなたの回答：{st.session_state.answers[q_index].upper()} - {feedback.get('your_choice')}")
-            st.markdown(f"正解：{feedback.get('correct_answer').upper()} - {feedback.get('correct_choice')}")
-            if feedback.get("explanation"):
-                st.info(f"📘 解説：{feedback['explanation']}")
-
-            if st.button("次の問題へ"):
-                feedback_container.empty()
-                st.session_state.page = "blank"
-                st.session_state.q_index += 1
-                st.rerun()
+        if st.button("次の問題へ"):
+            st.session_state.page = "blank"
+            st.session_state.q_index += 1
+            st.rerun()
 
 else:
     st.subheader("採点結果")
@@ -147,7 +147,5 @@ else:
     st.success(f"🎯 最終スコア：{score} / {num_questions}")
 
     if st.button("もう一度解く"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
+        st.session_state.page = "reset"
         st.rerun()
-
