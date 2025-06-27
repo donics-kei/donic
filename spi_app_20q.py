@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import time
 import os
-from streamlit_extras.st_autorefresh import st_autorefresh
 
 # 背景とロゴ表示
 st.markdown('<style>body { background-color: #E0F7FA; }</style>', unsafe_allow_html=True)
@@ -41,11 +40,7 @@ questions = st.session_state.questions
 q_index = st.session_state.q_index
 num_questions = st.session_state.num_questions
 
-st.title(f"SPI試験対策（言語 20問）")
-
-# ⏳ 回答前のときのみページを1秒ごとに更新
-if q_index < num_questions and not st.session_state.get(f"feedback_shown_{q_index}", False):
-    st_autorefresh(interval=1000, key="auto_refresh")
+st.title("SPI試験対策（言語 20問）")
 
 if q_index < num_questions:
     q = questions.iloc[q_index]
@@ -99,6 +94,10 @@ if q_index < num_questions:
             }
 
             st.session_state[feedback_key] = True
+            st.rerun()
+        else:
+            # 1秒ごとに手動で再描画（カウントダウン更新）
+            time.sleep(1)
             st.rerun()
 
     else:
