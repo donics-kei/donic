@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# --- スタイル（スマホ最適化） ---
+# スタイル（スマホ対応＆視認性向上）
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -24,9 +24,6 @@ div[class*="stRadio"] label {
 </style>
 """, unsafe_allow_html=True)
 
-if os.path.exists("nics_logo.png"):
-    st.image("nics_logo.png", width=260)
-
 DEFAULT_TIME_LIMIT = 60
 
 @st.cache_data
@@ -37,16 +34,16 @@ def load_questions():
         st.stop()
     df = pd.read_csv(path)
     if df.empty:
-        st.error("CSVファイルに問題が含まれていません。")
+        st.error("CSVファイルが空です。")
         st.stop()
     return df
 
-# セッション初期化
+# 初期化
 if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
 
-# ===== SELECT ページ =====
+# ===== SELECT PAGE =====
 if st.session_state.page == "select":
     st.markdown("<h1>SPI試験対策</h1>", unsafe_allow_html=True)
     category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
@@ -69,7 +66,7 @@ if st.session_state.page == "select":
         st.session_state.feedback_shown = False
         st.rerun()
 
-# ===== QUIZ ページ =====
+# ===== QUIZ PAGE =====
 if st.session_state.page == "quiz":
     questions = st.session_state.questions
     q_index = st.session_state.q_index
@@ -82,7 +79,9 @@ if st.session_state.page == "quiz":
 
     elapsed = time.time() - st.session_state.start_times[q_index]
     remaining = max(0, int(time_limit - elapsed))
-    st.warning(f"⏳ 残り時間：{remaining} 秒")
+
+    if not st.session_state.feedback_shown:
+        st.warning(f"⏳ 残り時間：{remaining} 秒")
 
     if remaining == 0 and not st.session_state.feedback_shown:
         st.error("時間切れ！次の問題へ進みます。")
@@ -97,7 +96,10 @@ if st.session_state.page == "quiz":
     labels = ['a', 'b', 'c', 'd', 'e']
     choices = [str(q.get(f'choice{i+1}', '')) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-    selected = st.radio("選択肢を選んでください：", labeled_choices, index=None, key=f"choice_{q_index}")
+
+    selected = st.radio("選択肢を選んでください：", labeled_choices, index=None,
+                        key=f"choice_{q_index}", disabled=st.session_state.feedback_shown)
+
     feedback_container = st.empty()
 
     if not st.session_state.feedback_shown:
@@ -113,17 +115,18 @@ if st.session_state.page == "quiz":
                 your_choice = choices[selected_index]
 
                 with feedback_container.container():
+                    st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
+                    st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
                     if correct:
                         st.success("正解！")
                     else:
                         st.error("不正解")
-                    st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
-                    st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
                     if q.get("explanation"):
                         st.info(f"📘 解説：{q['explanation']}")
 
                 st.session_state.feedback_shown = True
-    else:
+
+    elif st.session_state.feedback_shown:
         if st.button("次の問題へ"):
             feedback_container.empty()
             st.session_state.q_index += 1
@@ -131,13 +134,13 @@ if st.session_state.page == "quiz":
             st.session_state.pop(f"choice_{q_index}", None)
             st.rerun()
 
-    # タイマー更新（解説中は更新しない）
     if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
 
-# ===== RESULT ページ =====
-if st.session_state.page == "result":
+# ===== RESULT PAGE =====
+if st.session_state.page == "result" or st.session_state.q_index >= len(st.session_state.questions):
+    st.session_state.page = "result"
     questions = st.session_state.questions
     answers = st.session_state.answers
     score = 0
