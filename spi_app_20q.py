@@ -115,9 +115,21 @@ if q_index < num_questions:
             st.info(f"📘 解説：{feedback['explanation']}")
 
         if st.button("次の問題へ"):
-            st.session_state.q_index += 1
-            st.session_state.page = "blank"
-            st.rerun()
+    placeholder = st.empty()
+    placeholder.markdown("")
+    keys_to_clear = [
+        k for k in list(st.session_state.keys())
+        if k.startswith("choice_")
+        or k.startswith("feedback_shown_")
+        or k.startswith("selected_choice_")
+        or k.startswith("feedback_data_")
+    ]
+    for k in keys_to_clear:
+        del st.session_state[k]
+    time.sleep(0.2)
+    st.session_state.q_index += 1
+    st.session_state.page = "blank"
+    st.rerun()
 
 else:
     st.subheader("採点結果")
