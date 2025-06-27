@@ -19,7 +19,7 @@ div.question-text {
 }
 div[class*="stRadio"] label {
     font-size: 16px !important;
-    line-height: 1.5;
+    line-height: 1;
     padding: 8px 4px;
 }
 section[data-testid="stNotification"], .markdown-text-container {
@@ -56,7 +56,11 @@ if "page" not in st.session_state:
 # ===== START ページ =====
 if st.session_state.page == "start":
     st.title("SPI試験対策：言語分野（20問）")
-    st.markdown("このアプリでは、SPI言語分野の模擬演習をスマホでも快適に行えます。")
+    st.markdown("このアプリでは、SPI言語分野の模擬演習を行うことができます。")
+    st.markdown("- 各問題には時間制限があります")
+    st.markdown("- 回答後すぐに正解・解説が表示されます")
+    st.markdown("- 全問終了後にスコアが表示されます")
+
 
     if st.button("演習スタート"):
         df = load_questions()
