@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+from streamlit_extras.st_autorefresh import st_autorefresh
 
-# 背景色とロゴ
+# 背景とロゴ表示
 st.markdown('<style>body { background-color: #E0F7FA; }</style>', unsafe_allow_html=True)
 st.image("nics_logo.png", width=300)
 
@@ -15,7 +16,7 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
-# blankページで一度状態をリセット
+# blank ページで状態リセット
 if st.session_state.get("page") == "blank":
     for k in list(st.session_state.keys()):
         if k.startswith("choice_") or k.startswith("feedback_shown_") or k.startswith("selected_choice_") or k.startswith("feedback_data_"):
@@ -41,6 +42,10 @@ q_index = st.session_state.q_index
 num_questions = st.session_state.num_questions
 
 st.title(f"SPI試験対策（言語 20問）")
+
+# ⏳ 回答前のときのみページを1秒ごとに更新
+if q_index < num_questions and not st.session_state.get(f"feedback_shown_{q_index}", False):
+    st_autorefresh(interval=1000, key="auto_refresh")
 
 if q_index < num_questions:
     q = questions.iloc[q_index]
@@ -106,7 +111,6 @@ if q_index < num_questions:
 
             st.markdown(f"あなたの回答：{st.session_state.answers[q_index].upper()} - {feedback.get('your_choice')}")
             st.markdown(f"正解：{feedback.get('correct_answer').upper()} - {feedback.get('correct_choice')}")
-
             if feedback.get("explanation"):
                 st.info(f"📘 解説：{feedback['explanation']}")
 
@@ -147,3 +151,4 @@ else:
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
+
