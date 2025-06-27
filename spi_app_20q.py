@@ -3,29 +3,15 @@ import pandas as pd
 import time
 import os
 
-# スマホ対応レイアウトとスタイル
-st.set_page_config(page_title="SPI試験対策：言語 20問", layout="centered")
-st.markdown('''
+# 🌈 背景・ロゴ・フォントスタイル設定
+st.markdown("""
     <style>
-        body {
-            background-color: #E0F7FA;
-        }
-        .block-container {
-            padding-top: 1rem;
-            padding-bottom: 1rem;
-        }
-        .stRadio > div {
-            flex-direction: column;
-        }
-        .stButton > button {
-            width: 100%;
-            font-size: 1.1rem;
-        }
+    body { background-color: #E0F7FA; }
+    div.question-text { font-size: 16px !important; line-height: 1.6; }
+    div[class*="stRadio"] label { font-size: 16px !important; }
     </style>
-''', unsafe_allow_html=True)
-
-# ロゴ画像表示
-st.image("nics_logo.png", use_container_width=True)
+""", unsafe_allow_html=True)
+st.image("nics_logo.png", width=300)
 
 DEFAULT_TIME_LIMIT = 60
 
@@ -35,16 +21,16 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
-# ページ切り替え用セッション変数
+# 初期状態の設定
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
-# ========== START ページ ==========
+# ===== STARTページ =====
 if st.session_state.page == "start":
     st.title("SPI試験対策：言語分野（20問）")
     st.markdown("このアプリでは、SPI言語分野の模擬演習を行うことができます。")
     st.markdown("- 各問題には時間制限があります")
-    st.markdown("- 回答後すぐに正解・解説が表示されます")
+    st.markdown("- 回答後すぐに正誤・解説が表示されます")
     st.markdown("- 全問終了後にスコアが表示されます")
 
     if st.button("演習スタート"):
@@ -55,9 +41,12 @@ if st.session_state.page == "start":
         st.session_state.q_index = 0
         st.session_state.start_times = [None] * 20
         st.session_state.page = "quiz"
+        for k in list(st.session_state.keys()):
+            if k.startswith("feedback_") or k.startswith("selection_") or k.startswith("feedback_shown_"):
+                del st.session_state[k]
         st.rerun()
 
-# ========== QUIZ ページ ==========
+# ===== QUIZページ =====
 elif st.session_state.page == "quiz":
     questions = st.session_state.questions
     q_index = st.session_state.q_index
@@ -74,10 +63,9 @@ elif st.session_state.page == "quiz":
         st.session_state.start_times[q_index] = time.time()
 
     elapsed = time.time() - st.session_state.start_times[q_index]
-    remaining = int(time_limit - elapsed)
-    remaining = max(0, remaining)
-
+    remaining = max(0, int(time_limit - elapsed))
     feedback_key = f"feedback_shown_{q_index}"
+
     if remaining == 0 and not st.session_state.get(feedback_key, False):
         st.error("時間切れ！未回答として次へ進みます")
         st.session_state.answers[q_index] = None
@@ -86,12 +74,11 @@ elif st.session_state.page == "quiz":
 
     st.title(f"Q{q_index + 1} / {num_questions}")
     st.warning(f"⏳ 残り時間：{remaining} 秒")
-    st.subheader(q['question'])
+    st.markdown(f'<div class="question-text">{q["question"]}</div>', unsafe_allow_html=True)
 
     labels = ['a', 'b', 'c', 'd', 'e']
     choices = [str(q[f'choice{i+1}']) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-
     feedback_container = st.empty()
 
     if not st.session_state.get(feedback_key, False):
@@ -135,12 +122,11 @@ elif st.session_state.page == "quiz":
                 st.session_state.q_index += 1
                 st.rerun()
 
-# ========== RESULT ページ ==========
+# ===== RESULTページ =====
 elif st.session_state.page == "result":
     questions = st.session_state.questions
     answers = st.session_state.answers
     score = 0
-
     st.title("📊 採点結果")
 
     for i, q in questions.iterrows():
@@ -155,7 +141,6 @@ elif st.session_state.page == "result":
         correct_choice = choices[correct_index] if correct_index != -1 else "不明"
         your_choice = choices[labels.index(your_answer)] if your_answer in labels else "未回答"
         correct_flag = your_answer == correct_answer
-
         if correct_flag:
             score += 1
 
@@ -170,10 +155,6 @@ elif st.session_state.page == "result":
 
     if st.button("もう一度解く"):
         st.session_state.page = "start"
-        st.session_state.questions = []
-        st.session_state.answers = []
-        st.session_state.q_index = 0
-        st.session_state.start_times = []
         for k in list(st.session_state.keys()):
             if k.startswith("feedback_") or k.startswith("selection_") or k.startswith("feedback_shown_"):
                 del st.session_state[k]
