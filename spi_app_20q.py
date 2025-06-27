@@ -77,10 +77,10 @@ if q_index < num_questions:
     labels = ['a', 'b', 'c', 'd', 'e']
     choices = [str(q[f'choice{i+1}']) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"choice_{q_index}")
 
     if not st.session_state.get(feedback_key, False):
-        if st.button("回答する"):
+        selected = st.radio("選択肢を選んでください：", labeled_choices, index=None)
+        if st.button("回答する") and selected:
             selected_index = labeled_choices.index(selected)
             st.session_state.answers[q_index] = labels[selected_index]
             correct_answer = str(q['answer']).lower().strip()
@@ -102,7 +102,7 @@ if q_index < num_questions:
         time.sleep(1)
         st.rerun()
 
-    elif st.session_state.get(feedback_key):
+    else:
         feedback = st.session_state.get(f"feedback_data_{q_index}", {})
         if feedback.get("correct"):
             st.success("正解！")
@@ -114,18 +114,9 @@ if q_index < num_questions:
             st.info(f"📘 解説：{feedback['explanation']}")
 
         if st.button("次の問題へ"):
-            placeholder = st.empty()
-            placeholder.markdown("")
-            keys_to_clear = [
-                k for k in list(st.session_state.keys())
-                if k.startswith("choice_")
-                or k.startswith("feedback_shown_")
-                or k.startswith("selected_choice_")
-                or k.startswith("feedback_data_")
-            ]
-            for k in keys_to_clear:
-                del st.session_state[k]
-            time.sleep(0.2)
+            for k in list(st.session_state.keys()):
+                if k.startswith("choice_") or k.startswith("feedback_shown_") or k.startswith("selected_choice_") or k.startswith("feedback_data_"):
+                    del st.session_state[k]
             st.session_state.q_index += 1
             st.session_state.page = "blank"
             st.rerun()
