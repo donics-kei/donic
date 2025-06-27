@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# --- スタイル調整（スマホ対応） ---
+# --- スタイル調整 ---
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -38,12 +38,10 @@ def load_questions():
         st.stop()
     return df
 
-# --- セッション初期化 ---
 if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
 
-# --- SELECT ページ ---
 if st.session_state.page == "select":
     st.markdown("<h1>SPI試験対策</h1>", unsafe_allow_html=True)
     category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
@@ -66,7 +64,6 @@ if st.session_state.page == "select":
         st.session_state.feedback_shown = False
         st.rerun()
 
-# --- QUIZ ページ ---
 if st.session_state.page == "quiz":
     questions = st.session_state.questions
     q_index = st.session_state.q_index
@@ -103,7 +100,7 @@ if st.session_state.page == "quiz":
                         index=None, key=f"choice_{q_index}",
                         disabled=st.session_state.feedback_shown)
 
- feedback_container = st.empty()
+    feedback_container = st.empty()
 
     if not st.session_state.feedback_shown:
         if st.button("回答する") and selected:
@@ -118,31 +115,39 @@ if st.session_state.page == "quiz":
                 your_choice = choices[selected_index]
 
                 with feedback_container.container():
+                    st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
+                    st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
                     if correct:
                         st.success("正解！")
                     else:
                         st.error("不正解")
-                    st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
-                    st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
                     if q.get("explanation"):
                         st.info(f"📘 解説：{q['explanation']}")
 
-                st.session_state.feedback_shown = True
-
-    elif st.session_state.feedback_shown:
+                # 解説直後に次の問題へボタン表示
+                if st.button("次の問題へ"):
+                    feedback_container.empty()
+                    st.session_state.q_index += 1
+                    st.session_state.feedback_shown = False
+                    st.session_state.pop(f"choice_{q_index}", None)
+                    st.rerun()
+                else:
+                    st.stop()
+    else:
+        # 解説のみ表示時も「次の問題へ」だけ表示
         with feedback_container:
-            # すでに解説が表示された状態なので、ボタンだけ表示
             if st.button("次の問題へ"):
                 feedback_container.empty()
                 st.session_state.q_index += 1
                 st.session_state.feedback_shown = False
                 st.session_state.pop(f"choice_{q_index}", None)
                 st.rerun()
+        st.stop()
 
     if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
-# --- RESULT ページ ---
+
 if st.session_state.page == "result":
     questions = st.session_state.questions
     answers = st.session_state.answers
