@@ -17,15 +17,9 @@ def load_questions():
 
 # blankページで一度状態をリセット
 if st.session_state.get("page") == "blank":
-    keys_to_clear = [
-        k for k in list(st.session_state.keys())
-        if k.startswith("choice_")
-        or k.startswith("feedback_shown_")
-        or k.startswith("selected_choice_")
-        or k.startswith("feedback_data_")
-    ]
-    for k in keys_to_clear:
-        del st.session_state[k]
+    for k in list(st.session_state.keys()):
+        if k.startswith("choice_") or k.startswith("feedback_shown_") or k.startswith("selected_choice_") or k.startswith("feedback_data_"):
+            del st.session_state[k]
     st.session_state.page = "quiz"
     st.rerun()
 
@@ -78,8 +72,10 @@ if q_index < num_questions:
     choices = [str(q[f'choice{i+1}']) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
+    feedback_container = st.empty()
+
     if not st.session_state.get(feedback_key, False):
-        selected = st.radio("選択肢を選んでください：", labeled_choices, index=None)
+        selected = st.radio("選択肢を選んでください：", labeled_choices, index=None, key=f"selection_{q_index}_{time.time()}")
         if st.button("回答する") and selected:
             selected_index = labeled_choices.index(selected)
             st.session_state.answers[q_index] = labels[selected_index]
@@ -103,23 +99,22 @@ if q_index < num_questions:
         st.rerun()
 
     else:
-        feedback = st.session_state.get(f"feedback_data_{q_index}", {})
-        if feedback.get("correct"):
-            st.success("正解！")
-        else:
-            st.error("不正解")
-        st.markdown(f"あなたの回答：{st.session_state.answers[q_index].upper()} - {feedback.get('your_choice')}")
-        st.markdown(f"正解：{feedback.get('correct_answer').upper()} - {feedback.get('correct_choice')}")
-        if feedback.get("explanation"):
-            st.info(f"📘 解説：{feedback['explanation']}")
+        with feedback_container.container():
+            feedback = st.session_state.get(f"feedback_data_{q_index}", {})
+            if feedback.get("correct"):
+                st.success("正解！")
+            else:
+                st.error("不正解")
+            st.markdown(f"あなたの回答：{st.session_state.answers[q_index].upper()} - {feedback.get('your_choice')}")
+            st.markdown(f"正解：{feedback.get('correct_answer').upper()} - {feedback.get('correct_choice')}")
+            if feedback.get("explanation"):
+                st.info(f"📘 解説：{feedback['explanation']}")
 
-        if st.button("次の問題へ"):
-            for k in list(st.session_state.keys()):
-                if k.startswith("choice_") or k.startswith("feedback_shown_") or k.startswith("selected_choice_") or k.startswith("feedback_data_"):
-                    del st.session_state[k]
-            st.session_state.q_index += 1
-            st.session_state.page = "blank"
-            st.rerun()
+            if st.button("次の問題へ"):
+                feedback_container.empty()  # 表示をクリア
+                st.session_state.page = "blank"
+                st.session_state.q_index += 1
+                st.rerun()
 
 else:
     st.subheader("採点結果")
