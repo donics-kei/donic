@@ -3,11 +3,12 @@ import pandas as pd
 import time
 import os
 
-# CSSスタイル
+# --- スタイル（スマホ最適化） ---
 st.markdown("""
 <style>
 html, body, [class*="css"] {
     font-size: 16px !important;
+    line-height: 1.6;
     padding: 0 12px;
 }
 h1 { font-size: 22px !important; }
@@ -36,11 +37,11 @@ def load_questions():
         st.stop()
     df = pd.read_csv(path)
     if df.empty:
-        st.error("CSVファイルが空です。")
+        st.error("CSVファイルに問題が含まれていません。")
         st.stop()
     return df
 
-# 初期化
+# セッション初期化
 if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
@@ -72,14 +73,10 @@ if st.session_state.page == "select":
 if st.session_state.page == "quiz":
     questions = st.session_state.questions
     q_index = st.session_state.q_index
-    num_questions = len(questions)
-
-    if q_index >= num_questions:
-        st.session_state.page = "result"
-        st.rerun()
-
     q = questions.iloc[q_index]
+    num_questions = len(questions)
     time_limit = int(q.get("time_limit", DEFAULT_TIME_LIMIT))
+
     if st.session_state.start_times[q_index] is None:
         st.session_state.start_times[q_index] = time.time()
 
@@ -126,16 +123,16 @@ if st.session_state.page == "quiz":
                         st.info(f"📘 解説：{q['explanation']}")
 
                 st.session_state.feedback_shown = True
-
-    # ===== 自動遷移・タイマー更新 =====
-    if st.session_state.feedback_shown:
-        time.sleep(3)
-        feedback_container.empty()
-        st.session_state.q_index += 1
-        st.session_state.feedback_shown = False
-        st.session_state.pop(f"choice_{q_index}", None)
-        st.rerun()
     else:
+        if st.button("次の問題へ"):
+            feedback_container.empty()
+            st.session_state.q_index += 1
+            st.session_state.feedback_shown = False
+            st.session_state.pop(f"choice_{q_index}", None)
+            st.rerun()
+
+    # タイマー更新（解説中は更新しない）
+    if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
 
