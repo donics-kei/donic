@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# スマホ対応スタイル
+# スタイル（スマホ最適化・フォント統一）
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -14,14 +14,12 @@ html, body, [class*="css"] {
 h1 { font-size: 22px !important; }
 h2 { font-size: 20px !important; }
 div.question-text {
-    font-size: 16px !important;
     font-weight: bold;
     margin-top: 1rem;
     margin-bottom: 1rem;
 }
 div[class*="stRadio"] label {
     font-size: 16px !important;
-    line-height: 1.5;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -39,11 +37,11 @@ def load_questions():
         st.stop()
     df = pd.read_csv(path)
     if df.empty:
-        st.error("CSVに問題データがありません。")
+        st.error("問題データが空です。")
         st.stop()
     return df
 
-# 初期化
+# ===== セッション初期化 =====
 if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
@@ -70,18 +68,21 @@ if st.session_state.page == "select":
         st.session_state.num_questions = len(selected_q)
         st.session_state.mode = mode
         st.session_state.feedback_shown = False
+        st.session_state.page = "quiz"
         st.rerun()
-    st.stop()
 
 # ===== QUIZ ページ =====
-questions = st.session_state.questions
-q_index = st.session_state.q_index
-num_questions = st.session_state.num_questions
+if st.session_state.page == "quiz":
+    questions = st.session_state.questions
+    q_index = st.session_state.q_index
+    num_questions = st.session_state.num_questions
 
-if q_index < num_questions:
+    if q_index >= num_questions:
+        st.session_state.page = "result"
+        st.rerun()
+
     q = questions.iloc[q_index]
     time_limit = int(q.get("time_limit", DEFAULT_TIME_LIMIT))
-
     if st.session_state.start_times[q_index] is None:
         st.session_state.start_times[q_index] = time.time()
 
@@ -100,7 +101,7 @@ if q_index < num_questions:
     st.markdown(f"<div class='question-text'>{q['question']}</div>", unsafe_allow_html=True)
 
     labels = ['a', 'b', 'c', 'd', 'e']
-    choices = [str(q[f'choice{i+1}']) for i in range(5)]
+    choices = [str(q.get(f'choice{i+1}', '')) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
     selected = st.radio("選択肢を選んでください：", labeled_choices, index=None, key=f"choice_{q_index}")
     feedback_container = st.empty()
@@ -112,8 +113,8 @@ if q_index < num_questions:
             st.session_state.answers[q_index] = selected_label
 
             if st.session_state.mode == "その都度採点":
-                correct = selected_label == str(q['answer']).lower().strip()
-                correct_label = str(q['answer']).lower().strip()
+                correct_label = str(q.get("answer", "")).lower().strip()
+                correct = selected_label == correct_label
                 correct_choice = choices[labels.index(correct_label)] if correct_label in labels else "不明"
                 your_choice = choices[selected_index]
 
@@ -128,6 +129,7 @@ if q_index < num_questions:
                         st.info(f"📘 解説：{q['explanation']}")
 
                 st.session_state.feedback_shown = True
+
     else:
         if st.button("次の問題へ"):
             feedback_container.empty()
@@ -141,14 +143,17 @@ if q_index < num_questions:
         st.rerun()
 
 # ===== RESULT ページ =====
-else:
-    st.subheader("採点結果")
+if st.session_state.page == "result":
+    questions = st.session_state.questions
+    answers = st.session_state.answers
     score = 0
+    st.subheader("採点結果")
+
     for i, q in questions.iterrows():
-        your_answer = st.session_state.answers[i]
+        your_answer = answers[i]
         correct_label = str(q['answer']).lower().strip()
         labels = ['a', 'b', 'c', 'd', 'e']
-        choices = [str(q[f'choice{j+1}']) for j in range(5)]
+        choices = [str(q.get(f'choice{j+1}', '')) for j in range(5)]
         correct_choice = choices[labels.index(correct_label)] if correct_label in labels else "不明"
         your_choice = choices[labels.index(your_answer)] if your_answer in labels else "未回答"
         correct = your_answer == correct_label
