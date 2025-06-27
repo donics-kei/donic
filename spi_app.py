@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# スマホ最適化スタイル
+# CSSスタイル
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -72,10 +72,14 @@ if st.session_state.page == "select":
 if st.session_state.page == "quiz":
     questions = st.session_state.questions
     q_index = st.session_state.q_index
-    q = questions.iloc[q_index]
     num_questions = len(questions)
-    time_limit = int(q.get("time_limit", DEFAULT_TIME_LIMIT))
 
+    if q_index >= num_questions:
+        st.session_state.page = "result"
+        st.rerun()
+
+    q = questions.iloc[q_index]
+    time_limit = int(q.get("time_limit", DEFAULT_TIME_LIMIT))
     if st.session_state.start_times[q_index] is None:
         st.session_state.start_times[q_index] = time.time()
 
@@ -122,18 +126,20 @@ if st.session_state.page == "quiz":
                         st.info(f"📘 解説：{q['explanation']}")
 
                 st.session_state.feedback_shown = True
-                time.sleep(3)
-                feedback_container.empty()
-                st.session_state.q_index += 1
-                st.session_state.feedback_shown = False
-                st.session_state.pop(f"choice_{q_index}", None)
-                st.rerun()
 
-    if st.session_state.q_index >= len(st.session_state.questions):
-        st.session_state.page = "result"
+    # ===== 自動遷移・タイマー更新 =====
+    if st.session_state.feedback_shown:
+        time.sleep(3)
+        feedback_container.empty()
+        st.session_state.q_index += 1
+        st.session_state.feedback_shown = False
+        st.session_state.pop(f"choice_{q_index}", None)
+        st.rerun()
+    else:
+        time.sleep(1)
         st.rerun()
 
-# ===== RESULT PAGE =====
+# ===== RESULT ページ =====
 if st.session_state.page == "result":
     questions = st.session_state.questions
     answers = st.session_state.answers
@@ -163,4 +169,3 @@ if st.session_state.page == "result":
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
-
