@@ -111,6 +111,7 @@ if st.session_state.page == "quiz":
             st.session_state.answers[q_index] = selected_label
             st.session_state.feedback_shown = True
             st.session_state.feedback_q_index = q_index
+            st.rerun()
 
     if st.session_state.feedback_shown and st.session_state.feedback_q_index == q_index:
         selected_label = st.session_state.answers[q_index]
