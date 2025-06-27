@@ -159,7 +159,7 @@ elif st.session_state.feedback_shown:
                 st.session_state.pop(f"choice_{q_index}", None)
                 st.rerun()
 
- if not st.session_state.feedback_shown:
+    if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
 # --- 結果ページ ---
