@@ -134,7 +134,7 @@ if not st.session_state.feedback_shown:
 
             st.stop()
 
-    elif st.session_state.feedback_shown:
+elif st.session_state.feedback_shown:
         # --- 再描画時にも次の問題へボタンを確実に表示 ---
         with feedback_container.container():
             selected_label = st.session_state.answers[q_index]
