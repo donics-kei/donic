@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# スマホ最適化のスタイル
+# 📱 スマホ最適化のスタイルとフォント調整
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -12,6 +12,14 @@ html, body, [class*="css"] {
     padding: 0 12px;
     word-wrap: break-word;
 }
+h1 {
+    font-size: 22px !important;
+    margin-bottom: 1rem;
+}
+h2 {
+    font-size: 20px !important;
+    margin-bottom: 1rem;
+}
 div.question-text {
     font-size: 16px !important;
     margin-top: 1rem;
@@ -19,7 +27,7 @@ div.question-text {
 }
 div[class*="stRadio"] label {
     font-size: 16px !important;
-    line-height: 1;
+    line-height: 1.5;
     padding: 8px 4px;
 }
 section[data-testid="stNotification"], .markdown-text-container {
@@ -28,13 +36,13 @@ section[data-testid="stNotification"], .markdown-text-container {
 }
 button[kind="primary"] {
     font-size: 16px !important;
-    padding: 0.5rem 1rem;
-    margin-top: 1rem;
+    padding: 0.6rem 1.2rem;
+    margin-top: 1.2rem;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# 画像が存在すれば表示（なければスキップ）
+# ロゴ表示（存在チェック）
 if os.path.exists("nics_logo.png"):
     st.image("nics_logo.png", width=260)
 
@@ -45,15 +53,15 @@ def load_questions():
     BASE_DIR = os.path.dirname(__file__)
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     if not os.path.exists(csv_path):
-        st.error(f"問題データファイルが見つかりませんでした: {csv_path}")
+        st.error(f"問題データが見つかりません: {csv_path}")
         st.stop()
     return pd.read_csv(csv_path)
 
-# セッション初期化
+# 初期化
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
-# ===== START ページ =====
+# ==== スタートページ ====
 if st.session_state.page == "start":
     st.title("SPI試験対策：言語分野（20問）")
     st.markdown("このアプリでは、SPI言語分野の模擬演習を行うことができます。")
@@ -61,10 +69,9 @@ if st.session_state.page == "start":
     st.markdown("- 回答後すぐに正解・解説が表示されます")
     st.markdown("- 全問終了後にスコアが表示されます")
 
-
     if st.button("演習スタート"):
         df = load_questions()
-        filtered = df[df['category'] == "言語"]
+        filtered = df[df["category"] == "言語"]
         st.session_state.questions = filtered.sample(min(20, len(filtered))).reset_index(drop=True)
         st.session_state.answers = [None] * 20
         st.session_state.q_index = 0
@@ -75,7 +82,7 @@ if st.session_state.page == "start":
                 del st.session_state[k]
         st.rerun()
 
-# ===== QUIZ ページ =====
+# ==== 問題ページ ====
 elif st.session_state.page == "quiz":
     questions = st.session_state.get("questions", [])
     q_index = st.session_state.get("q_index", 0)
@@ -101,12 +108,12 @@ elif st.session_state.page == "quiz":
         st.session_state.q_index += 1
         st.rerun()
 
-    st.title(f"Q{q_index + 1} / {num_questions}")
+    st.header(f"Q{q_index + 1} / {num_questions}")
     st.warning(f"⏳ 残り時間：{remaining} 秒")
-    st.markdown(f'<div class="question-text">{q["question"]}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="question-text"><b>{q["question"]}</b></div>', unsafe_allow_html=True)
 
-    labels = ['a', 'b', 'c', 'd', 'e']
-    choices = [str(q.get(f'choice{i+1}', "")) for i in range(5)]
+    labels = ["a", "b", "c", "d", "e"]
+    choices = [str(q.get(f"choice{i+1}", "")) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
     feedback_container = st.empty()
@@ -116,7 +123,7 @@ elif st.session_state.page == "quiz":
         if st.button("回答する") and selected:
             selected_index = labeled_choices.index(selected)
             st.session_state.answers[q_index] = labels[selected_index]
-            correct_answer = str(q.get('answer', '')).lower().strip()
+            correct_answer = str(q.get("answer", "")).lower().strip()
             correct = st.session_state.answers[q_index] == correct_answer
             correct_choice = choices[labels.index(correct_answer)] if correct_answer in labels else "不明"
             your_choice = choices[selected_index]
@@ -150,7 +157,7 @@ elif st.session_state.page == "quiz":
                 st.session_state.q_index += 1
                 st.rerun()
 
-# ===== RESULT ページ =====
+# ==== 結果ページ ====
 elif st.session_state.page == "result":
     questions = st.session_state.get("questions", [])
     answers = st.session_state.get("answers", [])
@@ -160,8 +167,8 @@ elif st.session_state.page == "result":
     for i, q in questions.iterrows():
         your_answer = answers[i]
         correct_answer = str(q.get("answer", "")).lower().strip()
-        labels = ['a', 'b', 'c', 'd', 'e']
-        choices = [str(q.get(f'choice{j+1}', '')) for j in range(5)]
+        labels = ["a", "b", "c", "d", "e"]
+        choices = [str(q.get(f"choice{j+1}", "")) for j in range(5)]
         correct_choice = choices[labels.index(correct_answer)] if correct_answer in labels else "不明"
         your_choice = choices[labels.index(your_answer)] if your_answer in labels else "未回答"
         correct_flag = your_answer == correct_answer
