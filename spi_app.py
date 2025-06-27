@@ -166,3 +166,4 @@ if st.session_state.page == "result":
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
+
