@@ -2,6 +2,30 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+st.set_page_config(page_title="SPI 言語演習", layout="centered")
+
+# ロゴとCSSスタイル
+st.markdown("""
+    <style>
+        body {
+            background-color: #E0F7FA;
+        }
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .stRadio > div {
+            flex-direction: column;
+        }
+        .stButton > button {
+            width: 100%;
+            font-size: 1.1rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# ロゴはカラム幅に合わせる
+st.image("nics_logo.png", use_column_width=True)
 
 # 背景とロゴ
 st.markdown('<style>body { background-color: #E0F7FA; }</style>', unsafe_allow_html=True)
