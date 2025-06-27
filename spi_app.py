@@ -99,12 +99,11 @@ if st.session_state.page == "quiz":
     choices = [str(q.get(f'choice{i+1}', '')) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    # --- 選択肢表示（解説時は非操作） ---
     selected = st.radio("選択肢を選んでください：", labeled_choices,
                         index=None, key=f"choice_{q_index}",
                         disabled=st.session_state.feedback_shown)
 
-    feedback_container = st.empty()
+ feedback_container = st.empty()
 
     if not st.session_state.feedback_shown:
         if st.button("回答する") and selected:
@@ -119,30 +118,30 @@ if st.session_state.page == "quiz":
                 your_choice = choices[selected_index]
 
                 with feedback_container.container():
-                    st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
-                    st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
                     if correct:
                         st.success("正解！")
                     else:
                         st.error("不正解")
+                    st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
+                    st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
                     if q.get("explanation"):
                         st.info(f"📘 解説：{q['explanation']}")
 
                 st.session_state.feedback_shown = True
 
     elif st.session_state.feedback_shown:
-        if st.button("次の問題へ"):
-            feedback_container.empty()
-            st.session_state.q_index += 1
-            st.session_state.feedback_shown = False
-            st.session_state.pop(f"choice_{q_index}", None)
-            st.rerun()
+        with feedback_container:
+            # すでに解説が表示された状態なので、ボタンだけ表示
+            if st.button("次の問題へ"):
+                feedback_container.empty()
+                st.session_state.q_index += 1
+                st.session_state.feedback_shown = False
+                st.session_state.pop(f"choice_{q_index}", None)
+                st.rerun()
 
-    # --- カウントダウン更新 ---
     if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
-
 # --- RESULT ページ ---
 if st.session_state.page == "result":
     questions = st.session_state.questions
@@ -173,4 +172,3 @@ if st.session_state.page == "result":
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
-
