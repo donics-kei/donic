@@ -99,11 +99,10 @@ if q_index < num_questions:
             st.session_state[feedback_key] = True
             st.rerun()
 
-        # ⏱ カウントダウン中だけ sleep & rerun
         time.sleep(1)
-        st.rerun()  # カウントダウン中のみ
+        st.rerun()
 
-       elif st.session_state.get(feedback_key):
+    elif st.session_state.get(feedback_key):
         feedback = st.session_state.get(f"feedback_data_{q_index}", {})
         if feedback.get("correct"):
             st.success("正解！")
