@@ -3,8 +3,42 @@ import pandas as pd
 import time
 import os
 
-st.markdown('<style>body { background-color: #E0F7FA; }</style>', unsafe_allow_html=True)
-st.image("nics_logo.png", width=300)
+# 📱 スタイル調整（スマホ表示＆太字表示）
+st.markdown("""
+<style>
+html, body, [class*="css"] {
+    font-size: 16px !important;
+    line-height: 1.6;
+    padding: 0 12px;
+    word-wrap: break-word;
+}
+h1 { font-size: 22px !important; margin-bottom: 1rem; }
+h2 { font-size: 20px !important; margin-bottom: 1rem; }
+div.question-text {
+    font-size: 16px !important;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+div[class*="stRadio"] label {
+    font-size: 16px !important;
+    line-height: 1.5;
+    padding: 8px 4px;
+}
+section[data-testid="stNotification"], .markdown-text-container {
+    font-size: 15px !important;
+    line-height: 1.6;
+}
+button[kind="primary"] {
+    font-size: 16px !important;
+    padding: 0.6rem 1.2rem;
+    margin-top: 1.2rem;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ロゴ（あれば）
+if os.path.exists("nics_logo.png"):
+    st.image("nics_logo.png", width=260)
 
 DEFAULT_TIME_LIMIT = 60
 
@@ -12,9 +46,12 @@ DEFAULT_TIME_LIMIT = 60
 def load_questions():
     BASE_DIR = os.path.dirname(__file__)
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
+    if not os.path.exists(csv_path):
+        st.error("CSVファイルが見つかりません。")
+        st.stop()
     return pd.read_csv(csv_path)
 
-# セッション初期化
+# 初期化
 if "page" not in st.session_state:
     st.session_state.page = "select"
 if "feedback_shown" not in st.session_state:
@@ -22,13 +59,13 @@ if "feedback_shown" not in st.session_state:
 if "cleared_feedback" not in st.session_state:
     st.session_state.cleared_feedback = False
 
-# SELECT PAGE
+# ========== SELECT ページ ==========
 if st.session_state.page == "select":
-    st.title("SPI試験対策")
+    st.markdown("<h1>SPI試験対策</h1>", unsafe_allow_html=True)
     category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
     num_q = st.number_input("出題数を入力してください（最大50問）", 1, 50, 20, 1)
     mode = st.radio("採点方法を選んでください：", ["最後にまとめて採点", "その都度採点"])
-    
+
     if st.button("開始"):
         df = load_questions()
         filtered = df[df["category"] == category]
@@ -45,7 +82,7 @@ if st.session_state.page == "select":
 
     st.stop()
 
-# QUIZ PAGE
+# ========== QUIZ ページ ==========
 questions = st.session_state.questions
 q_index = st.session_state.q_index
 num_questions = st.session_state.num_questions
@@ -54,7 +91,6 @@ if q_index < num_questions:
     q = questions.iloc[q_index]
     time_limit = int(q.get("time_limit", DEFAULT_TIME_LIMIT))
 
-    # 残り時間の計算
     if st.session_state.start_times[q_index] is None:
         st.session_state.start_times[q_index] = time.time()
     elapsed = time.time() - st.session_state.start_times[q_index]
@@ -69,9 +105,11 @@ if q_index < num_questions:
         st.session_state.cleared_feedback = True
         st.rerun()
 
-    st.subheader(f"Q{q_index + 1}: {q['question']}")
+    st.markdown(f"<h2>Q{q_index + 1}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<div class='question-text'><b>{q['question']}</b></div>", unsafe_allow_html=True)
+
     labels = ['a', 'b', 'c', 'd', 'e']
-    choices = [str(q[f'choice{i+1}']) for i in range(5)]
+    choices = [str(q.get(f'choice{i+1}', "")) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
     feedback_container = st.empty()
@@ -102,19 +140,18 @@ if q_index < num_questions:
                 st.session_state.feedback_shown = True
     else:
         if st.button("次の問題へ"):
-            feedback_container.empty()
+            feedback_container.empty()  # ✅ 解説を消去
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
             st.session_state.cleared_feedback = True
             st.session_state.pop(f"choice_{q_index}", None)
             st.rerun()
 
-    # カウントダウン更新（フィードバックが表示中でない場合のみ）
     if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
 
-# RESULT PAGE
+# ========== RESULT ページ ==========
 else:
     st.subheader("採点結果")
     score = 0
@@ -122,7 +159,7 @@ else:
         your_answer = st.session_state.answers[i]
         correct_answer = str(q['answer']).lower().strip()
         labels = ['a', 'b', 'c', 'd', 'e']
-        choices = [str(q[f'choice{j+1}']) for j in range(5)]
+        choices = [str(q.get(f'choice{j+1}', '')) for j in range(5)]
         correct_choice = choices[labels.index(correct_answer)] if correct_answer in labels else "不明"
         your_choice = choices[labels.index(your_answer)] if your_answer in labels else "未回答"
         correct = your_answer == correct_answer
