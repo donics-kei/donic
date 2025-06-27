@@ -43,6 +43,7 @@ def load_questions():
 if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
+    st.session_state.feedback_q_index = -1
 
 # --- SELECT ページ ---
 if st.session_state.page == "select":
@@ -64,6 +65,7 @@ if st.session_state.page == "select":
         st.session_state.mode = mode
         st.session_state.page = "quiz"
         st.session_state.feedback_shown = False
+        st.session_state.feedback_q_index = -1
         st.rerun()
 
 # --- QUIZ ページ ---
@@ -88,6 +90,7 @@ if st.session_state.page == "quiz":
         st.session_state.answers[q_index] = None
         st.session_state.q_index += 1
         st.session_state.feedback_shown = False
+        st.session_state.feedback_q_index = -1
         st.rerun()
 
     st.header(f"Q{q_index + 1}")
@@ -107,31 +110,9 @@ if st.session_state.page == "quiz":
             selected_label = labels[selected_index]
             st.session_state.answers[q_index] = selected_label
             st.session_state.feedback_shown = True
+            st.session_state.feedback_q_index = q_index
 
-            if st.session_state.mode == "その都度採点":
-                correct_label = str(q.get("answer", "")).lower().strip()
-                correct = selected_label == correct_label
-                correct_choice = choices[labels.index(correct_label)] if correct_label in labels else "不明"
-                your_choice = choices[selected_index]
-
-                st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
-                st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
-                if correct:
-                    st.success("正解！")
-                else:
-                    st.error("不正解")
-                if q.get("explanation"):
-                    st.info(f"📘 解説：{q['explanation']}")
-
-            if st.button("次の問題へ"):
-                st.session_state.q_index += 1
-                st.session_state.feedback_shown = False
-                st.session_state.pop(f"choice_{q_index}", None)
-                st.rerun()
-
-            st.stop()
-
-    elif st.session_state.feedback_shown:
+    if st.session_state.feedback_shown and st.session_state.feedback_q_index == q_index:
         selected_label = st.session_state.answers[q_index]
         correct_label = str(q.get("answer", "")).lower().strip()
         correct = selected_label == correct_label
@@ -150,6 +131,7 @@ if st.session_state.page == "quiz":
         if st.button("次の問題へ"):
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
+            st.session_state.feedback_q_index = -1
             st.session_state.pop(f"choice_{q_index}", None)
             st.rerun()
 
@@ -187,4 +169,4 @@ if st.session_state.page == "result":
     if st.button("もう一度挑戦する"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
-        st.r
+        st.rerun()
