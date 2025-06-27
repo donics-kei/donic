@@ -103,7 +103,8 @@ if st.session_state.page == "quiz":
                         disabled=st.session_state.feedback_shown)
 
     feedback_container = st.empty()
- if not st.session_state.feedback_shown:
+
+if not st.session_state.feedback_shown:
         if st.button("回答する") and selected:
             selected_index = labeled_choices.index(selected)
             selected_label = labels[selected_index]
