@@ -5,7 +5,6 @@ import os
 
 st.set_page_config(page_title="SPI練習アプリ", layout="centered")
 
-# --- スタイル調整 ---
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -45,7 +44,7 @@ if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
 
-# --- セレクト画面 ---
+# --- SELECT ページ ---
 if st.session_state.page == "select":
     st.title("SPI練習アプリ")
     category = st.radio("出題カテゴリーを選択", ["言語", "非言語"])
@@ -67,7 +66,7 @@ if st.session_state.page == "select":
         st.session_state.feedback_shown = False
         st.rerun()
 
-# --- QUIZページ：問題表示開始 ---
+# --- QUIZ ページ ---
 if st.session_state.page == "quiz":
     if st.session_state.q_index >= len(st.session_state.questions):
         st.session_state.page = "result"
@@ -82,7 +81,7 @@ if st.session_state.page == "quiz":
     remaining = max(0, int(time_limit - elapsed))
 
     if not st.session_state.feedback_shown:
-        st.info(f"⏳ 残り時間：{remaining}秒")
+        st.info(f"⏳ 残り時間：{remaining} 秒")
 
     if remaining == 0 and not st.session_state.feedback_shown:
         st.error("時間切れ！次の問題へ進みます")
@@ -97,16 +96,17 @@ if st.session_state.page == "quiz":
     labels = ['a', 'b', 'c', 'd', 'e']
     choices = [str(q.get(f"choice{i+1}", '')) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
+
     selected = st.radio("選択肢を選んでください：", labeled_choices,
                         index=None, key=f"choice_{q_index}",
                         disabled=st.session_state.feedback_shown)
 
-    feedback_container = st.empty()
     if not st.session_state.feedback_shown:
         if st.button("回答する") and selected:
             selected_index = labeled_choices.index(selected)
             selected_label = labels[selected_index]
             st.session_state.answers[q_index] = selected_label
+            st.session_state.feedback_shown = True
 
             if st.session_state.mode == "その都度採点":
                 correct_label = str(q.get("answer", "")).lower().strip()
@@ -114,39 +114,50 @@ if st.session_state.page == "quiz":
                 correct_choice = choices[labels.index(correct_label)] if correct_label in labels else "不明"
                 your_choice = choices[selected_index]
 
-                with feedback_container.container():
-                    st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
-                    st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
-                    if correct:
-                        st.success("正解！")
-                    else:
-                        st.error("不正解")
-                    if q.get("explanation"):
-                        st.info(f"📘 解説：{q['explanation']}")
+                st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
+                st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
+                if correct:
+                    st.success("正解！")
+                else:
+                    st.error("不正解")
+                if q.get("explanation"):
+                    st.info(f"📘 解説：{q['explanation']}")
 
-                    if st.button("次の問題へ"):
-                        feedback_container.empty()
-                        st.session_state.q_index += 1
-                        st.session_state.feedback_shown = False
-                        st.session_state.pop(f"choice_{q_index}", None)
-                        st.rerun()
-
-            st.session_state.feedback_shown = True
-            st.stop()
-
-    elif st.session_state.feedback_shown:
-        with feedback_container:
             if st.button("次の問題へ"):
-                feedback_container.empty()
                 st.session_state.q_index += 1
                 st.session_state.feedback_shown = False
                 st.session_state.pop(f"choice_{q_index}", None)
                 st.rerun()
 
+            st.stop()
+
+    elif st.session_state.feedback_shown:
+        selected_label = st.session_state.answers[q_index]
+        correct_label = str(q.get("answer", "")).lower().strip()
+        correct = selected_label == correct_label
+        correct_choice = choices[labels.index(correct_label)] if correct_label in labels else "不明"
+        your_choice = choices[labels.index(selected_label)] if selected_label in labels else "未回答"
+
+        st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
+        st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
+        if correct:
+            st.success("正解！")
+        else:
+            st.error("不正解")
+        if q.get("explanation"):
+            st.info(f"📘 解説：{q['explanation']}")
+
+        if st.button("次の問題へ"):
+            st.session_state.q_index += 1
+            st.session_state.feedback_shown = False
+            st.session_state.pop(f"choice_{q_index}", None)
+            st.rerun()
+
     if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
-# --- 結果ページ ---
+
+# --- RESULT ページ ---
 if st.session_state.page == "result":
     st.subheader("🎓 採点結果")
     score = 0
@@ -176,5 +187,5 @@ if st.session_state.page == "result":
     if st.button("もう一度挑戦する"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
-        st.rerun()
+        st.r
 
