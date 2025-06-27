@@ -1,9 +1,12 @@
+# StreamlitによるSPI演習アプリ（完全修正版）
+# 解説表示中は「回答する」ボタンを非表示にし、「次の問題へ」ボタンに切り替わります
+
 import streamlit as st
 import pandas as pd
 import time
 import os
 
-# スタイル（スマホ対応＆視認性向上）
+# ----- スタイル（スマホ最適化） -----
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -34,16 +37,16 @@ def load_questions():
         st.stop()
     df = pd.read_csv(path)
     if df.empty:
-        st.error("CSVファイルが空です。")
+        st.error("CSVファイルに問題が含まれていません。")
         st.stop()
     return df
 
-# 初期化
+# ----- セッション初期化 -----
 if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
 
-# ===== SELECT PAGE =====
+# ----- SELECT ページ -----
 if st.session_state.page == "select":
     st.markdown("<h1>SPI試験対策</h1>", unsafe_allow_html=True)
     category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
@@ -66,7 +69,7 @@ if st.session_state.page == "select":
         st.session_state.feedback_shown = False
         st.rerun()
 
-# ===== QUIZ PAGE =====
+# ----- QUIZ ページ -----
 if st.session_state.page == "quiz":
     questions = st.session_state.questions
     q_index = st.session_state.q_index
@@ -102,6 +105,7 @@ if st.session_state.page == "quiz":
 
     feedback_container = st.empty()
 
+    # ===== 回答前：回答ボタン表示 =====
     if not st.session_state.feedback_shown:
         if st.button("回答する") and selected:
             selected_index = labeled_choices.index(selected)
@@ -126,7 +130,8 @@ if st.session_state.page == "quiz":
 
                 st.session_state.feedback_shown = True
 
-    elif st.session_state.feedback_shown:
+    # ===== 回答後：次の問題へボタンのみ表示 =====
+    else:
         if st.button("次の問題へ"):
             feedback_container.empty()
             st.session_state.q_index += 1
@@ -138,7 +143,7 @@ if st.session_state.page == "quiz":
         time.sleep(1)
         st.rerun()
 
-# ===== RESULT PAGE =====
+# ----- RESULT ページ -----
 if st.session_state.page == "result" or st.session_state.q_index >= len(st.session_state.questions):
     st.session_state.page = "result"
     questions = st.session_state.questions
@@ -169,4 +174,3 @@ if st.session_state.page == "result" or st.session_state.q_index >= len(st.sessi
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
-
