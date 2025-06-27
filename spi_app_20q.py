@@ -7,7 +7,7 @@ import os
 st.markdown("""
     <style>
     body { background-color: #E0F7FA; }
-    div.question-text { font-size: 16px !important; line-height: 1.6; }
+    div.question-text { font-size: 10px !important; line-height: 1.6; }
     div[class*="stRadio"] label { font-size: 16px !important; }
     </style>
 """, unsafe_allow_html=True)
