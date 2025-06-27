@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import time
 import os
-st.set_page_config(page_title="SPI 言語演習", layout="centered")
 
-# ロゴとCSSスタイル
-st.markdown("""
+# スマホ対応レイアウトとスタイル
+st.set_page_config(page_title="SPI試験対策：言語 20問", layout="centered")
+st.markdown('''
     <style>
         body {
             background-color: #E0F7FA;
@@ -22,14 +22,10 @@ st.markdown("""
             font-size: 1.1rem;
         }
     </style>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
-# ロゴはカラム幅に合わせる
-st.image("nics_logo.png", use_column_width=True)
-
-# 背景とロゴ
-st.markdown('<style>body { background-color: #E0F7FA; }</style>', unsafe_allow_html=True)
-st.image("nics_logo.png", width=300)
+# ロゴ画像表示
+st.image("nics_logo.png", use_container_width=True)
 
 DEFAULT_TIME_LIMIT = 60
 
@@ -50,7 +46,7 @@ if st.session_state.page == "start":
     st.markdown("- 各問題には時間制限があります")
     st.markdown("- 回答後すぐに正解・解説が表示されます")
     st.markdown("- 全問終了後にスコアが表示されます")
-    
+
     if st.button("演習スタート"):
         df = load_questions()
         filtered = df[df['category'] == "言語"]
@@ -182,4 +178,3 @@ elif st.session_state.page == "result":
             if k.startswith("feedback_") or k.startswith("selection_") or k.startswith("feedback_shown_"):
                 del st.session_state[k]
         st.rerun()
-
