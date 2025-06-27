@@ -3,8 +3,9 @@ import pandas as pd
 import time
 import os
 
-st.set_page_config(page_title="SPI練習", layout="centered")
+st.set_page_config(page_title="SPI練習アプリ", layout="centered")
 
+# --- スタイル調整 ---
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -39,10 +40,12 @@ def load_questions():
         st.stop()
     return df
 
+# --- セッション初期化 ---
 if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
 
+# --- セレクト画面 ---
 if st.session_state.page == "select":
     st.title("SPI練習アプリ")
     category = st.radio("出題カテゴリーを選択", ["言語", "非言語"])
@@ -64,6 +67,7 @@ if st.session_state.page == "select":
         st.session_state.feedback_shown = False
         st.rerun()
 
+# --- QUIZページ：問題表示開始 ---
 if st.session_state.page == "quiz":
     if st.session_state.q_index >= len(st.session_state.questions):
         st.session_state.page = "result"
@@ -98,7 +102,6 @@ if st.session_state.page == "quiz":
                         disabled=st.session_state.feedback_shown)
 
     feedback_container = st.empty()
-
     if not st.session_state.feedback_shown:
         if st.button("回答する") and selected:
             selected_index = labeled_choices.index(selected)
@@ -121,12 +124,20 @@ if st.session_state.page == "quiz":
                     if q.get("explanation"):
                         st.info(f"📘 解説：{q['explanation']}")
 
+                    if st.button("次の問題へ"):
+                        feedback_container.empty()
+                        st.session_state.q_index += 1
+                        st.session_state.feedback_shown = False
+                        st.session_state.pop(f"choice_{q_index}", None)
+                        st.rerun()
+
             st.session_state.feedback_shown = True
             st.stop()
 
     elif st.session_state.feedback_shown:
         with feedback_container:
             if st.button("次の問題へ"):
+                feedback_container.empty()
                 st.session_state.q_index += 1
                 st.session_state.feedback_shown = False
                 st.session_state.pop(f"choice_{q_index}", None)
@@ -135,12 +146,15 @@ if st.session_state.page == "quiz":
     if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
-
+# --- 結果ページ ---
 if st.session_state.page == "result":
     st.subheader("🎓 採点結果")
     score = 0
-    for i, q in st.session_state.questions.iterrows():
-        your = st.session_state.answers[i]
+    questions = st.session_state.questions
+    answers = st.session_state.answers
+
+    for i, q in questions.iterrows():
+        your = answers[i]
         correct = str(q.get("answer", "")).lower().strip()
         labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q.get(f"choice{j+1}", '')) for j in range(5)]
@@ -157,8 +171,10 @@ if st.session_state.page == "result":
             st.markdown(f"📘 解説：{q['explanation']}")
         st.markdown("---")
 
-    st.success(f"最終スコア：{score} / {len(st.session_state.questions)}")
-    if st.button("もう一度解く"):
+    st.success(f"🎯 最終スコア：{score} / {len(questions)}")
+
+    if st.button("もう一度挑戦する"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
+
