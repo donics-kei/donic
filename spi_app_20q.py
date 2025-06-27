@@ -3,15 +3,47 @@ import pandas as pd
 import time
 import os
 
-# 🌈 背景・ロゴ・フォントスタイル設定
+# 🌐 スマホ向け最適化スタイル
 st.markdown("""
-    <style>
-    body { background-color: #E0F7FA; }
-    div.question-text { font-size: 10px !important; line-height: 1.6; }
-    div[class*="stRadio"] label { font-size: 16px !important; }
-    </style>
+<style>
+/* 全体のフォント・行間・余白調整 */
+html, body, [class*="css"] {
+    font-size: 16px !important;
+    line-height: 1.6;
+    padding: 0 12px;
+    word-wrap: break-word;
+}
+
+/* 問題文 */
+div.question-text {
+    font-size: 16px !important;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* 選択肢（ラジオボタン） */
+div[class*="stRadio"] label {
+    font-size: 16px !important;
+    line-height: 1.5;
+    padding: 8px 4px;
+}
+
+/* 警告や解説メッセージ */
+section[data-testid="stNotification"], .markdown-text-container {
+    font-size: 15px !important;
+    line-height: 1.6;
+}
+
+/* ボタンを押しやすく */
+button[kind="primary"] {
+    font-size: 16px !important;
+    padding: 0.5rem 1rem;
+    margin-top: 1rem;
+}
+</style>
 """, unsafe_allow_html=True)
-st.image("nics_logo.png", width=300)
+
+st.image("nics_logo.png", width=260)
 
 DEFAULT_TIME_LIMIT = 60
 
@@ -21,17 +53,17 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
-# 初期状態の設定
+# 初期状態
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
 # ===== STARTページ =====
 if st.session_state.page == "start":
     st.title("SPI試験対策：言語分野（20問）")
-    st.markdown("このアプリでは、SPI言語分野の模擬演習を行うことができます。")
-    st.markdown("- 各問題には時間制限があります")
-    st.markdown("- 回答後すぐに正誤・解説が表示されます")
-    st.markdown("- 全問終了後にスコアが表示されます")
+    st.markdown("このアプリでは、SPI言語分野の模擬演習をスマホでも快適に行えます。")
+    st.markdown("- 各問題に制限時間あり")
+    st.markdown("- 回答直後に正誤と解説を表示")
+    st.markdown("- 終了後にスコアを表示します")
 
     if st.button("演習スタート"):
         df = load_questions()
@@ -79,6 +111,7 @@ elif st.session_state.page == "quiz":
     labels = ['a', 'b', 'c', 'd', 'e']
     choices = [str(q[f'choice{i+1}']) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
+
     feedback_container = st.empty()
 
     if not st.session_state.get(feedback_key, False):
@@ -134,11 +167,7 @@ elif st.session_state.page == "result":
         correct_answer = str(q['answer']).lower().strip()
         labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q[f'choice{j+1}']) for j in range(5)]
-        try:
-            correct_index = labels.index(correct_answer)
-        except ValueError:
-            correct_index = -1
-        correct_choice = choices[correct_index] if correct_index != -1 else "不明"
+        correct_choice = choices[labels.index(correct_answer)] if correct_answer in labels else "不明"
         your_choice = choices[labels.index(your_answer)] if your_answer in labels else "未回答"
         correct_flag = your_answer == correct_answer
         if correct_flag:
@@ -159,3 +188,4 @@ elif st.session_state.page == "result":
             if k.startswith("feedback_") or k.startswith("selection_") or k.startswith("feedback_shown_"):
                 del st.session_state[k]
         st.rerun()
+
