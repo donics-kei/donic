@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# スタイル（スマホ最適化・フォント統一）
+# === スタイル ===
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -24,6 +24,7 @@ div[class*="stRadio"] label {
 </style>
 """, unsafe_allow_html=True)
 
+# ロゴ画像（任意）
 if os.path.exists("nics_logo.png"):
     st.image("nics_logo.png", width=260)
 
@@ -37,7 +38,7 @@ def load_questions():
         st.stop()
     df = pd.read_csv(path)
     if df.empty:
-        st.error("問題データが空です。")
+        st.error("CSVファイルに問題が含まれていません。")
         st.stop()
     return df
 
@@ -46,7 +47,7 @@ if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
 
-# ===== SELECT ページ =====
+# ===== SELECT PAGE =====
 if st.session_state.page == "select":
     st.markdown("<h1>SPI試験対策</h1>", unsafe_allow_html=True)
     category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
@@ -71,7 +72,7 @@ if st.session_state.page == "select":
         st.session_state.page = "quiz"
         st.rerun()
 
-# ===== QUIZ ページ =====
+# ===== QUIZ PAGE =====
 if st.session_state.page == "quiz":
     questions = st.session_state.questions
     q_index = st.session_state.q_index
@@ -142,7 +143,7 @@ if st.session_state.page == "quiz":
         time.sleep(1)
         st.rerun()
 
-# ===== RESULT ページ =====
+# ===== RESULT PAGE =====
 if st.session_state.page == "result":
     questions = st.session_state.questions
     answers = st.session_state.answers
@@ -151,7 +152,7 @@ if st.session_state.page == "result":
 
     for i, q in questions.iterrows():
         your_answer = answers[i]
-        correct_label = str(q['answer']).lower().strip()
+        correct_label = str(q.get('answer', '')).lower().strip()
         labels = ['a', 'b', 'c', 'd', 'e']
         choices = [str(q.get(f'choice{j+1}', '')) for j in range(5)]
         correct_choice = choices[labels.index(correct_label)] if correct_label in labels else "不明"
