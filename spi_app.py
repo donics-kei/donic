@@ -3,7 +3,8 @@ import pandas as pd
 import time
 import os
 
-# --- スタイル調整 ---
+st.set_page_config(page_title="SPI練習", layout="centered")
+
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -43,59 +44,55 @@ if "page" not in st.session_state:
     st.session_state.feedback_shown = False
 
 if st.session_state.page == "select":
-    st.markdown("<h1>SPI試験対策</h1>", unsafe_allow_html=True)
-    category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
-    num_q = st.number_input("出題数（最大50問）", 1, 50, 20)
-    mode = st.radio("採点方法を選んでください：", ["最後にまとめて採点", "その都度採点"])
-
-    if st.button("開始"):
+    st.title("SPI練習アプリ")
+    category = st.radio("出題カテゴリーを選択", ["言語", "非言語"])
+    num_q = st.slider("出題数", 1, 50, 10)
+    mode = st.radio("採点モード", ["その都度採点", "最後にまとめて採点"])
+    if st.button("スタート！"):
         df = load_questions()
         filtered = df[df["category"] == category]
         if filtered.empty:
-            st.error("このカテゴリーには問題がありません。")
+            st.error("そのカテゴリーには問題がありません。")
             st.stop()
-        selected_q = filtered.sample(min(num_q, len(filtered))).reset_index(drop=True)
-        st.session_state.questions = selected_q
-        st.session_state.answers = [None] * len(selected_q)
+        selected = filtered.sample(min(num_q, len(filtered))).reset_index(drop=True)
+        st.session_state.questions = selected
         st.session_state.q_index = 0
-        st.session_state.start_times = [None] * len(selected_q)
+        st.session_state.answers = [None] * len(selected)
+        st.session_state.start_times = [None] * len(selected)
         st.session_state.mode = mode
         st.session_state.page = "quiz"
         st.session_state.feedback_shown = False
         st.rerun()
 
 if st.session_state.page == "quiz":
-    questions = st.session_state.questions
-    q_index = st.session_state.q_index
-    if q_index >= len(questions):
+    if st.session_state.q_index >= len(st.session_state.questions):
         st.session_state.page = "result"
         st.rerun()
 
-    q = questions.iloc[q_index]
+    q_index = st.session_state.q_index
+    q = st.session_state.questions.iloc[q_index]
     time_limit = int(q.get("time_limit", DEFAULT_TIME_LIMIT))
     if st.session_state.start_times[q_index] is None:
         st.session_state.start_times[q_index] = time.time()
-
     elapsed = time.time() - st.session_state.start_times[q_index]
     remaining = max(0, int(time_limit - elapsed))
 
     if not st.session_state.feedback_shown:
-        st.warning(f"⏳ 残り時間：{remaining} 秒")
+        st.info(f"⏳ 残り時間：{remaining}秒")
 
     if remaining == 0 and not st.session_state.feedback_shown:
-        st.error("時間切れ！次の問題へ進みます。")
+        st.error("時間切れ！次の問題へ進みます")
         st.session_state.answers[q_index] = None
         st.session_state.q_index += 1
         st.session_state.feedback_shown = False
         st.rerun()
 
-    st.markdown(f"<h2>Q{q_index + 1}</h2>", unsafe_allow_html=True)
+    st.header(f"Q{q_index + 1}")
     st.markdown(f"<div class='question-text'>{q['question']}</div>", unsafe_allow_html=True)
 
     labels = ['a', 'b', 'c', 'd', 'e']
-    choices = [str(q.get(f'choice{i+1}', '')) for i in range(5)]
+    choices = [str(q.get(f"choice{i+1}", '')) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-
     selected = st.radio("選択肢を選んでください：", labeled_choices,
                         index=None, key=f"choice_{q_index}",
                         disabled=st.session_state.feedback_shown)
@@ -124,55 +121,43 @@ if st.session_state.page == "quiz":
                     if q.get("explanation"):
                         st.info(f"📘 解説：{q['explanation']}")
 
-                # 解説直後に次の問題へボタン表示
-                if st.button("次の問題へ"):
-                    feedback_container.empty()
-                    st.session_state.q_index += 1
-                    st.session_state.feedback_shown = False
-                    st.session_state.pop(f"choice_{q_index}", None)
-                    st.rerun()
-                else:
-                    st.stop()
-    else:
-        # 解説のみ表示時も「次の問題へ」だけ表示
+            st.session_state.feedback_shown = True
+            st.stop()
+
+    elif st.session_state.feedback_shown:
         with feedback_container:
             if st.button("次の問題へ"):
-                feedback_container.empty()
                 st.session_state.q_index += 1
                 st.session_state.feedback_shown = False
                 st.session_state.pop(f"choice_{q_index}", None)
                 st.rerun()
-        st.stop()
 
     if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
 
 if st.session_state.page == "result":
-    questions = st.session_state.questions
-    answers = st.session_state.answers
+    st.subheader("🎓 採点結果")
     score = 0
-    st.subheader("採点結果")
-
-    for i, q in questions.iterrows():
-        your_answer = answers[i]
-        correct_label = str(q.get("answer", "")).lower().strip()
+    for i, q in st.session_state.questions.iterrows():
+        your = st.session_state.answers[i]
+        correct = str(q.get("answer", "")).lower().strip()
         labels = ['a', 'b', 'c', 'd', 'e']
-        choices = [str(q.get(f'choice{j+1}', '')) for j in range(5)]
-        correct_choice = choices[labels.index(correct_label)] if correct_label in labels else "不明"
-        your_choice = choices[labels.index(your_answer)] if your_answer in labels else "未回答"
-        correct = your_answer == correct_label
-        if correct:
+        choices = [str(q.get(f"choice{j+1}", '')) for j in range(5)]
+        correct_choice = choices[labels.index(correct)] if correct in labels else "不明"
+        your_choice = choices[labels.index(your)] if your in labels else "未回答"
+        is_correct = your == correct
+        if is_correct:
             score += 1
 
-        st.markdown(f"**Q{i+1}: {q['question']}** {'✅ 正解' if correct else '❌ 不正解'}")
-        st.markdown(f"あなたの回答：{your_answer.upper() if your_answer else '未回答'} - {your_choice}")
-        st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
+        st.markdown(f"**Q{i+1}: {q['question']}** {'✅' if is_correct else '❌'}")
+        st.markdown(f"あなたの回答：{your.upper() if your else '未回答'} - {your_choice}")
+        st.markdown(f"正解：{correct.upper()} - {correct_choice}")
         if q.get("explanation"):
             st.markdown(f"📘 解説：{q['explanation']}")
         st.markdown("---")
 
-    st.success(f"🎯 最終スコア：{score} / {len(questions)}")
+    st.success(f"最終スコア：{score} / {len(st.session_state.questions)}")
     if st.button("もう一度解く"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
