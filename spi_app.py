@@ -14,6 +14,7 @@ def load_questions():
     csv_path = os.path.join(BASE_DIR, "spi_questions_converted.csv")
     return pd.read_csv(csv_path)
 
+# 初期化
 if "page" not in st.session_state:
     st.session_state.page = "select"
 if "feedback_shown" not in st.session_state:
@@ -23,6 +24,7 @@ if "answers" not in st.session_state:
 if "cleared_feedback" not in st.session_state:
     st.session_state.cleared_feedback = False
 
+# ========== SELECT PAGE ==========
 if st.session_state.page == "select":
     st.title("SPI試験対策")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
@@ -82,33 +84,36 @@ if q_index < num_questions:
     labels = ['a', 'b', 'c', 'd', 'e']
     choices = [str(q[f'choice{i+1}']) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
-    selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"choice_{q_index}")
+    
+    feedback_container = st.empty()
 
     if not st.session_state.feedback_shown:
+        selected = st.radio("選択肢を選んでください：", labeled_choices, key=f"choice_{q_index}")
+
         if st.button("回答する"):
             selected_index = labeled_choices.index(selected)
             st.session_state.answers[q_index] = labels[selected_index]
+
             if st.session_state.mode == "その都度採点":
                 correct_answer = str(q['answer']).lower().strip()
                 correct = st.session_state.answers[q_index] == correct_answer
                 correct_choice = choices[labels.index(correct_answer)] if correct_answer in labels else "不明"
                 your_choice = choices[selected_index]
 
-                if correct:
-                    st.success("正解！")
-                else:
-                    st.error("不正解")
+                with feedback_container.container():
+                    if correct:
+                        st.success("正解！")
+                    else:
+                        st.error("不正解")
+                    st.markdown(f"あなたの回答：{labels[selected_index].upper()} - {your_choice}")
+                    st.markdown(f"正解：{correct_answer.upper()} - {correct_choice}")
+                    if q.get("explanation"):
+                        st.info(f"📘 解説：{q['explanation']}")
 
-                st.markdown(f"あなたの回答：{labels[selected_index].upper()} - {your_choice}")
-                st.markdown(f"正解：{correct_answer.upper()} - {correct_choice}")
-                if q.get("explanation"):
-                    st.info(f"📘 解説：{q['explanation']}")
                 st.session_state.feedback_shown = True
-            else:
-                st.session_state.q_index += 1
-                st.rerun()
     else:
         if st.button("次の問題へ"):
+            feedback_container.empty()
             st.session_state.q_index += 1
             st.session_state.feedback_shown = False
             st.session_state.cleared_feedback = True
@@ -122,6 +127,7 @@ else:
     st.subheader("採点結果")
     score = 0
     results = []
+
     for i, q in questions.iterrows():
         your_answer = st.session_state.answers[i]
         correct_answer = str(q['answer']).lower().strip()
@@ -151,3 +157,4 @@ else:
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
+
