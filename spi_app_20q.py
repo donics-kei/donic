@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# ロゴの表示と背景色
+# 背景色とロゴ
 st.markdown('<style>body { background-color: #E0F7FA; }</style>', unsafe_allow_html=True)
 st.image("nics_logo.png", width=300)
 
@@ -55,8 +55,8 @@ if q_index < num_questions:
 
     elapsed = time.time() - st.session_state.start_times[q_index]
     remaining = int(time_limit - elapsed)
-    if remaining < 0:
-        remaining = 0
+    remaining = max(0, remaining)
+
     st.warning(f"⏳ 残り時間：{remaining} 秒")
 
     feedback_key = f"feedback_shown_{q_index}"
@@ -75,7 +75,8 @@ if q_index < num_questions:
     feedback_container = st.empty()
 
     if not st.session_state.get(feedback_key, False):
-        selected = st.radio("選択肢を選んでください：", labeled_choices, index=None, key=f"selection_{q_index}_{time.time()}")
+        selected = st.radio("選択肢を選んでください：", labeled_choices, index=None, key=f"selection_{q_index}")
+
         if st.button("回答する") and selected:
             selected_index = labeled_choices.index(selected)
             st.session_state.answers[q_index] = labels[selected_index]
@@ -95,9 +96,6 @@ if q_index < num_questions:
             st.session_state[feedback_key] = True
             st.rerun()
 
-        time.sleep(1)
-        st.rerun()
-
     else:
         with feedback_container.container():
             feedback = st.session_state.get(f"feedback_data_{q_index}", {})
@@ -105,13 +103,15 @@ if q_index < num_questions:
                 st.success("正解！")
             else:
                 st.error("不正解")
+
             st.markdown(f"あなたの回答：{st.session_state.answers[q_index].upper()} - {feedback.get('your_choice')}")
             st.markdown(f"正解：{feedback.get('correct_answer').upper()} - {feedback.get('correct_choice')}")
+
             if feedback.get("explanation"):
                 st.info(f"📘 解説：{feedback['explanation']}")
 
             if st.button("次の問題へ"):
-                feedback_container.empty()  # 表示をクリア
+                feedback_container.empty()
                 st.session_state.page = "blank"
                 st.session_state.q_index += 1
                 st.rerun()
