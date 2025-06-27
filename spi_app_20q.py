@@ -13,7 +13,7 @@ html, body, [class*="css"] {
     word-wrap: break-word;
 }
 h1 {
-    font-size: 22px !important;
+    font-size: 28px !important;
     margin-bottom: 1rem;
 }
 h2 {
