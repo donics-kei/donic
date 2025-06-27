@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 
-# --- スタイル ---
+# --- スタイル調整（スマホ対応） ---
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -38,7 +38,7 @@ def load_questions():
         st.stop()
     return df
 
-# セッション初期化
+# --- セッション初期化 ---
 if "page" not in st.session_state:
     st.session_state.page = "select"
     st.session_state.feedback_shown = False
@@ -99,8 +99,10 @@ if st.session_state.page == "quiz":
     choices = [str(q.get(f'choice{i+1}', '')) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    selected = st.radio("選択肢を選んでください：", labeled_choices, index=None,
-                        key=f"choice_{q_index}", disabled=st.session_state.feedback_shown)
+    # --- 選択肢表示（解説時は非操作） ---
+    selected = st.radio("選択肢を選んでください：", labeled_choices,
+                        index=None, key=f"choice_{q_index}",
+                        disabled=st.session_state.feedback_shown)
 
     feedback_container = st.empty()
 
@@ -136,6 +138,7 @@ if st.session_state.page == "quiz":
             st.session_state.pop(f"choice_{q_index}", None)
             st.rerun()
 
+    # --- カウントダウン更新 ---
     if not st.session_state.feedback_shown:
         time.sleep(1)
         st.rerun()
@@ -170,3 +173,4 @@ if st.session_state.page == "result":
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
+
