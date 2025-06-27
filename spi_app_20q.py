@@ -147,5 +147,5 @@ else:
     st.success(f"🎯 最終スコア：{score} / {num_questions}")
 
     if st.button("もう一度解く"):
-        st.session_state.page = "reset"
-        st.rerun()
+    st.session_state.clear()
+    st.rerun()
