@@ -76,8 +76,8 @@ if st.session_state.page == "start":
         if len(filtered) < 20:
             st.error("「言語」カテゴリの問題が20問未満です。")
             st.stop()
-        seed = random.randint(0, 99999)
-        selected = filtered.sample(n=20, random_state=seed).reset_index(drop=True)
+        st.session_state.seed = random.randint(0, 99999)
+        selected = filtered.sample(n=20, random_state=st.session_state.seed).reset_index(drop=True)
         st.session_state.questions = selected
         st.session_state.answers = [None] * 20
         st.session_state.q_index = 0
@@ -122,8 +122,6 @@ elif st.session_state.page == "quiz":
     choices = [str(q.get(f"choice{i+1}", "")) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    feedback_container = st.empty()
-
     if not st.session_state.get(feedback_key, False):
         selected = st.radio("選択肢を選んでください：", labeled_choices, index=None, key=f"selection_{q_index}")
         if st.button("回答する") and selected:
@@ -146,22 +144,23 @@ elif st.session_state.page == "quiz":
         else:
             time.sleep(1)
             st.rerun()
-    else:
-        with feedback_container.container():
-            feedback = st.session_state.get(f"feedback_data_{q_index}", {})
-            if feedback.get("correct"):
-                st.success("正解！")
-            else:
-                st.error("不正解")
-            st.markdown(f"あなたの回答：{st.session_state.answers[q_index].upper()} - {feedback.get('your_choice')}")
-            st.markdown(f"正解：{feedback.get('correct_answer').upper()} - {feedback.get('correct_choice')}")
-            if feedback.get("explanation"):
-                st.info(f"📘 解説：{feedback['explanation']}")
+    elif st.session_state.get(feedback_key, False):
+        feedback = st.session_state.get(f"feedback_data_{q_index}", {})
+        if feedback.get("correct"):
+            st.success("正解！")
+        else:
+            st.error("不正解")
+        st.markdown(f"あなたの回答：{st.session_state.answers[q_index].upper()} - {feedback.get('your_choice')}")
+        st.markdown(f"正解：{feedback.get('correct_answer').upper()} - {feedback.get('correct_choice')}")
+        if feedback.get("explanation"):
+            st.info(f"📘 解説：{feedback['explanation']}")
 
-            if st.button("次の問題へ"):
-                feedback_container.empty()
-                st.session_state.q_index += 1
-                st.rerun()
+        if st.button("次の問題へ"):
+            st.session_state.q_index += 1
+            st.session_state.pop(f"selection_{q_index}", None)
+            st.session_state.pop(f"feedback_data_{q_index}", None)
+            st.session_state.pop(feedback_key, None)
+            st.rerun()
 
 # ==== 結果ページ ====
 elif st.session_state.page == "result":
@@ -189,4 +188,3 @@ elif st.session_state.page == "result":
         st.markdown("---")
 
     st.success(f"🎯 最終スコア：{score} / {len(questions)}")
-
