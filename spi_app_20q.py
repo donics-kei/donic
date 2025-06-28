@@ -42,7 +42,7 @@ button[kind="primary"] {
 </style>
 """, unsafe_allow_html=True)
 
-# ロゴ表示（存在チェック）
+# ロゴ表示（存在すれば表示）
 if os.path.exists("nics_logo.png"):
     st.image("nics_logo.png", width=260)
 
@@ -72,7 +72,11 @@ if st.session_state.page == "start":
     if st.button("演習スタート"):
         df = load_questions()
         filtered = df[df["category"] == "言語"]
-        st.session_state.questions = filtered.sample(n=min(20, len(filtered)), random_state=None).reset_index(drop=True)
+        if len(filtered) < 20:
+            st.error("「言語」カテゴリの問題が20問未満です。")
+            st.stop()
+        selected = filtered.sample(n=20, random_state=None).reset_index(drop=True)
+        st.session_state.questions = selected
         st.session_state.answers = [None] * 20
         st.session_state.q_index = 0
         st.session_state.start_times = [None] * 20
