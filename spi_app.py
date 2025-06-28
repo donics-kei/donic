@@ -5,6 +5,7 @@ import os
 
 st.set_page_config(page_title="SPI練習アプリ", layout="centered")
 
+# スタイル調整とレスポンシブ対応
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -24,6 +25,10 @@ div[class*="stRadio"] label {
 }
 </style>
 """, unsafe_allow_html=True)
+
+# ロゴ表示（ファイルがあれば）
+if os.path.exists("nics_logo.png"):
+    st.image("nics_logo.png", width=240)
 
 DEFAULT_TIME_LIMIT = 60
 
@@ -49,7 +54,7 @@ if "page" not in st.session_state:
 if st.session_state.page == "select":
     st.title("SPI練習アプリ")
     category = st.radio("出題カテゴリーを選択", ["言語", "非言語"])
-    num_q = st.slider("出題数", 1, 50, 10)
+    num_q = st.number_input("出題数（1〜50）", min_value=1, max_value=50, value=10, step=1)
     mode = st.radio("採点モード", ["その都度採点", "最後にまとめて採点"])
     if st.button("スタート！"):
         df = load_questions()
