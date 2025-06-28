@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+import random  # 
 
 # 📱 スマホ最適化のスタイルとフォント調整
 st.markdown("""
