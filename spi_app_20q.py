@@ -72,7 +72,7 @@ if st.session_state.page == "start":
     if st.button("演習スタート"):
         df = load_questions()
         filtered = df[df["category"] == "言語"]
-        st.session_state.questions = filtered.sample(min(20, len(filtered))).reset_index(drop=True)
+        st.session_state.questions = filtered.sample(n=min(20, len(filtered)), random_state=None).reset_index(drop=True)
         st.session_state.answers = [None] * 20
         st.session_state.q_index = 0
         st.session_state.start_times = [None] * 20
