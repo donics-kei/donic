@@ -76,8 +76,7 @@ if st.session_state.page == "start":
         if len(filtered) < 20:
             st.error("「言語」カテゴリの問題が20問未満です。")
             st.stop()
-        st.session_state.seed = random.randint(0, 99999)
-        selected = filtered.sample(n=20, random_state=st.session_state.seed).reset_index(drop=True)
+        selected = filtered.sample(n=20).reset_index(drop=True)
         st.session_state.questions = selected
         st.session_state.answers = [None] * 20
         st.session_state.q_index = 0
