@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+import random  # ランダムシード用
 
 # 📱 スマホ最適化のスタイルとフォント調整
 st.markdown("""
@@ -42,7 +43,7 @@ button[kind="primary"] {
 </style>
 """, unsafe_allow_html=True)
 
-# ロゴ表示（存在すれば表示）
+# ロゴ表示（存在チェック）
 if os.path.exists("nics_logo.png"):
     st.image("nics_logo.png", width=260)
 
@@ -75,7 +76,8 @@ if st.session_state.page == "start":
         if len(filtered) < 20:
             st.error("「言語」カテゴリの問題が20問未満です。")
             st.stop()
-        selected = filtered.sample(n=20, random_state=None).reset_index(drop=True)
+        seed = random.randint(0, 99999)
+        selected = filtered.sample(n=20, random_state=seed).reset_index(drop=True)
         st.session_state.questions = selected
         st.session_state.answers = [None] * 20
         st.session_state.q_index = 0
@@ -186,10 +188,4 @@ elif st.session_state.page == "result":
             st.markdown(f"📘 解説：{q['explanation']}")
         st.markdown("---")
 
-    st.success(f"🎯 最終スコア：{score} / {len(questions)}")
-
-    if st.button("もう一度解く"):
-        st.session_state.page = "start"
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
-        st.rerun()
+    st.success(f"🎯
