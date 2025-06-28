@@ -55,7 +55,7 @@ if st.session_state.page == "start":
     st.markdown("- 回答後すぐに正解・解説が表示されます")
     st.markdown("- 全問終了後にスコアが表示されます")
 
-  if st.button("演習スタート"):
+if st.button("演習スタート"):
     df = load_questions()
     st.write(f"全問題数：{len(df)}")
     
