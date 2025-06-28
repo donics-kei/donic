@@ -100,6 +100,8 @@ if st.session_state.page == "quiz":
     choices = [str(q.get(f"choice{i+1}", '')) for i in range(5)]
     labeled_choices = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
+    feedback_container = st.empty()
+
     selected = st.radio("選択肢を選んでください：", labeled_choices,
                         index=None, key=f"choice_{q_index}",
                         disabled=st.session_state.feedback_shown)
@@ -114,27 +116,29 @@ if st.session_state.page == "quiz":
             st.rerun()
 
     if st.session_state.feedback_shown and st.session_state.feedback_q_index == q_index:
-        selected_label = st.session_state.answers[q_index]
-        correct_label = str(q.get("answer", "")).lower().strip()
-        correct = selected_label == correct_label
-        correct_choice = choices[labels.index(correct_label)] if correct_label in labels else "不明"
-        your_choice = choices[labels.index(selected_label)] if selected_label in labels else "未回答"
+        with feedback_container.container():
+            selected_label = st.session_state.answers[q_index]
+            correct_label = str(q.get("answer", "")).lower().strip()
+            correct = selected_label == correct_label
+            correct_choice = choices[labels.index(correct_label)] if correct_label in labels else "不明"
+            your_choice = choices[labels.index(selected_label)] if selected_label in labels else "未回答"
 
-        st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
-        st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
-        if correct:
-            st.success("正解！")
-        else:
-            st.error("不正解")
-        if q.get("explanation"):
-            st.info(f"📘 解説：{q['explanation']}")
+            st.markdown(f"あなたの回答：{selected_label.upper()} - {your_choice}")
+            st.markdown(f"正解：{correct_label.upper()} - {correct_choice}")
+            if correct:
+                st.success("正解！")
+            else:
+                st.error("不正解")
+            if q.get("explanation"):
+                st.info(f"📘 解説：{q['explanation']}")
 
-        if st.button("次の問題へ"):
-            st.session_state.q_index += 1
-            st.session_state.feedback_shown = False
-            st.session_state.feedback_q_index = -1
-            st.session_state.pop(f"choice_{q_index}", None)
-            st.rerun()
+            if st.button("次の問題へ"):
+                feedback_container.empty()
+                st.session_state.q_index += 1
+                st.session_state.feedback_shown = False
+                st.session_state.feedback_q_index = -1
+                st.session_state.pop(f"choice_{q_index}", None)
+                st.rerun()
 
     if not st.session_state.feedback_shown:
         time.sleep(1)
