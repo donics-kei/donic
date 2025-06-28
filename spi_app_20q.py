@@ -71,20 +71,25 @@ if st.session_state.page == "start":
 
     if st.button("演習スタート"):
         df = load_questions()
-        filtered = df[df["category"] == "言語"]
-        if len(filtered) < 20:
-            st.error("「言語」カテゴリの問題が20問未満です。")
-            st.stop()
-        selected = filtered.sample(n=20, random_state=None).reset_index(drop=True)
-        st.session_state.questions = selected
-        st.session_state.answers = [None] * 20
-        st.session_state.q_index = 0
-        st.session_state.start_times = [None] * 20
-        st.session_state.page = "quiz"
-        for k in list(st.session_state.keys()):
-            if k.startswith("feedback_") or k.startswith("selection_") or k.startswith("feedback_shown_"):
-                del st.session_state[k]
-        st.rerun()
+    filtered = df[df["category"] == "言語"]
+    if len(filtered) < 20:
+        st.error("「言語」カテゴリの問題が20問未満です。")
+        st.stop()
+
+    # ✅ 完全ランダムに抽出（時刻ベースのシードを毎回変える）
+    random.seed(time.time())
+    selected = filtered.sample(n=20, random_state=random.randint(1, 999999)).reset_index(drop=True)
+
+    st.session_state.questions = selected
+    st.session_state.answers = [None] * 20
+    st.session_state.q_index = 0
+    st.session_state.start_times = [None] * 20
+    st.session_state.page = "quiz"
+    for k in list(st.session_state.keys()):
+        if k.startswith("feedback_") or k.startswith("selection_") or k.startswith("feedback_shown_"):
+            del st.session_state[k]
+    st.rerun()
+
 
 # ==== 問題ページ ====
 elif st.session_state.page == "quiz":
