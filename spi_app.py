@@ -13,8 +13,8 @@ html, body, [class*="css"] {
     line-height: 1.6;
     padding: 0 12px;
 }
-h1 { font-size: 22px !important; }
-h2 { font-size: 20px !important; }
+h1 { font-size: 26px !important; }
+h2 { font-size: 21px !important; }
 div.question-text {
     font-weight: bold;
     margin-top: 1rem;
