@@ -188,4 +188,4 @@ elif st.session_state.page == "result":
             st.markdown(f"📘 解説：{q['explanation']}")
         st.markdown("---")
 
-    st.success(f"🎯
+    st.success(f"🎯)
