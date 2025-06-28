@@ -55,12 +55,22 @@ if st.session_state.page == "start":
     st.markdown("- 回答後すぐに正解・解説が表示されます")
     st.markdown("- 全問終了後にスコアが表示されます")
 
-    if st.button("演習スタート"):
-        df = load_questions()
-        filtered = df[df["category"] == "言語"]
-        if len(filtered) < 20:
-            st.error("言語カテゴリの問題が20問未満です。")
-            st.stop()
+  if st.button("演習スタート"):
+    df = load_questions()
+    st.write(f"全問題数：{len(df)}")
+    
+    filtered = df[df["category"].str.strip() == "言語"]
+    st.write(f"言語カテゴリの問題数：{len(filtered)}")
+    
+    if len(filtered) < 20:
+        st.error("言語カテゴリの問題が20問未満です。")
+        st.stop()
+
+    random.seed(time.time())
+    selected = filtered.sample(n=20, random_state=random.randint(1, 999999)).reset_index(drop=True)
+    st.session_state.questions = selected
+    ...
+
 
         # セッションの questions を明示的にリセット
         st.session_state.pop("questions", None)
