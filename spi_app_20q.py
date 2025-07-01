@@ -6,7 +6,10 @@ import random
 
 st.set_page_config(page_title="SPI言語20問", layout="centered")
 
-# スタイル（スマホ対応）
+# スマホモード選択（任意で切り替え）
+is_mobile = st.sidebar.checkbox("スマホモードで表示", value=False)
+st.session_state["is_mobile"] = is_mobile
+
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -15,7 +18,6 @@ html, body, [class*="css"] {
 </style>
 """, unsafe_allow_html=True)
 
-# ロゴ
 if os.path.exists("nics_logo.png"):
     st.image("nics_logo.png", width=260)
 
@@ -29,7 +31,7 @@ def load_questions():
     df["time_limit"] = df["time_limit"].fillna(60)
     return df
 
-# ログイン処理
+# ログイン認証状態
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -45,7 +47,7 @@ if not st.session_state.authenticated:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
-# 初期ページ設定
+# ページ遷移管理
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
@@ -80,23 +82,41 @@ elif st.session_state.page == "quiz":
     labels = ["a", "b", "c", "d", "e"]
     choices = [q.get(f"choice{i+1}", "") for i in range(5)]
     choice_map = {f"{l}. {c}": l for l, c in zip(labels, choices)}
-    picked = st.radio("選択肢を選んでください：", list(choice_map.keys()), index=None, key=f"choice_{idx}")
+    radio_key = f"picked_{idx}"
+    picked = st.radio("選択肢を選んでください：", list(choice_map.keys()), index=None, key=radio_key)
 
+    # タイマー
     if st.session_state.start_times[idx] is None:
         st.session_state.start_times[idx] = time.time()
+    elapsed = time.time() - st.session_state.start_times[idx]
+    time_limit = int(q.get("time_limit", 60))
+    remaining = max(0, int(time_limit - elapsed))
+    st.info(f"⏱ 残り時間：{remaining} 秒")
 
-    remaining = int(q.get("time_limit", 60) - (time.time() - st.session_state.start_times[idx]))
-    st.info(f"残り時間：{remaining}秒")
+    feedback_key = f"feedback_shown_{idx}"
 
-    if remaining <= 0:
-        st.error("時間切れ！")
-        st.session_state.answers[idx] = None
-        st.session_state.q_index += 1
-        st.rerun()
-
-    if picked and st.button("回答する"):
-        sel = choice_map[picked]
-        st.session_state.answers[idx] = sel
+    if not st.session_state.get(feedback_key, False):
+        if remaining <= 0:
+            st.warning("⌛ 時間切れ！未回答として次へ進みます")
+            st.session_state.answers[idx] = None
+            st.session_state.q_index += 1
+            for k in list(st.session_state.keys()):
+                if k.startswith("picked_") or k.startswith("feedback_shown_"):
+                    del st.session_state[k]
+            st.rerun()
+        elif st.button("回答する"):
+            if picked:
+                sel = choice_map[picked]
+                st.session_state.answers[idx] = sel
+                st.session_state[feedback_key] = True
+                st.rerun()
+            else:
+                st.warning("選択肢を選んでください。")
+        else:
+            time.sleep(1)
+            st.rerun()
+    else:
+        sel = st.session_state.answers[idx]
         correct = str(q["answer"]).lower().strip()
         correct_index = labels.index(correct) if correct in labels else -1
         st.subheader("解答結果")
@@ -110,10 +130,10 @@ elif st.session_state.page == "quiz":
             st.info(f"📘 解説：{q['explanation']}")
         if st.button("次へ"):
             st.session_state.q_index += 1
+            for k in list(st.session_state.keys()):
+                if k.startswith("picked_") or k.startswith("feedback_shown_"):
+                    del st.session_state[k]
             st.rerun()
-    else:
-        time.sleep(1)
-        st.rerun()
 
 elif st.session_state.page == "result" or st.session_state.q_index >= 20:
     st.title("📊 結果発表")
@@ -134,10 +154,11 @@ elif st.session_state.page == "result" or st.session_state.q_index >= 20:
         st.markdown("---")
         if correct:
             score += 1
-
     st.success(f"🎯 最終スコア：{score}/20")
 
     if st.button("もう一度挑戦"):
         for k in list(st.session_state.keys()):
-            del st.session_state[k]
+            if k != "authenticated":
+                del st.session_state[k]
         st.rerun()
+
