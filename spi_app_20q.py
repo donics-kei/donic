@@ -6,7 +6,6 @@ import random
 
 st.set_page_config(page_title="SPI言語20問", layout="centered")
 
-# スタイル調整
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -28,6 +27,7 @@ def load_questions():
     df["time_limit"] = df["time_limit"].fillna(60)
     return df
 
+# 認証
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -43,6 +43,7 @@ if not st.session_state.authenticated:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
+# ページ初期化
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
@@ -77,6 +78,7 @@ elif st.session_state.page == "quiz":
     choices = [q.get(f"choice{i+1}", "") for i in range(5)]
     choice_map = {f"{l}. {c}": l for l, c in zip(labels, choices)}
     radio_key = f"picked_{idx}"
+
     picked = st.radio("選択肢を選んでください：", list(choice_map.keys()), index=None, key=radio_key)
 
     if st.session_state.start_times[idx] is None:
@@ -90,13 +92,12 @@ elif st.session_state.page == "quiz":
 
     if not st.session_state.get(feedback_key, False):
         if remaining <= 0:
-            st.warning("⌛ 時間切れ！未回答として次へ")
+            st.warning("⌛ 時間切れ！未回答として次へ進みます")
             st.session_state.answers[idx] = None
             st.session_state.q_index += 1
-            # ✅ 現在のキーだけを削除
-            for k in [f"picked_{idx}", f"feedback_shown_{idx}", f"choice_{idx}", f"radio_{idx}"]:
-                if k in st.session_state:
-                    del st.session_state[k]
+            # ✅ 完全クリア
+            for k in [f"picked_{idx}", f"feedback_shown_{idx}"]:
+                st.session_state.pop(k, None)
             st.rerun()
         elif st.button("回答する"):
             if picked:
@@ -122,15 +123,15 @@ elif st.session_state.page == "quiz":
             st.markdown(f"正解：{correct.upper()} - {choices[correct_index]}")
         if q.get("explanation"):
             st.info(f"📘 解説：{q['explanation']}")
+
         if st.button("次へ"):
-            # ✅ 前問のキーを完全に削除
-            for k in [f"picked_{idx}", f"feedback_shown_{idx}", f"choice_{idx}", f"radio_{idx}"]:
-                if k in st.session_state:
-                    del st.session_state[k]
+            # ✅ セッション完全クリア（残留防止）
+            for k in [f"picked_{idx}", f"feedback_shown_{idx}"]:
+                st.session_state.pop(k, None)
             st.session_state.q_index += 1
             st.rerun()
 
-elif st.session_state.page == "result" or st.session_state.q_index >= 20:
+elif st.session_state.page == "result":
     st.title("📊 結果発表")
     score = 0
     for i, q in st.session_state.questions.iterrows():
