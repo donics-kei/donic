@@ -15,6 +15,7 @@ html, body, [class*="css"] {
 </style>
 """, unsafe_allow_html=True)
 
+# ロゴ
 if os.path.exists("nics_logo.png"):
     st.image("nics_logo.png", width=260)
 
@@ -28,6 +29,7 @@ def load_questions():
     df["time_limit"] = df["time_limit"].fillna(60)
     return df
 
+# ログイン管理
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -43,12 +45,15 @@ if not st.session_state.authenticated:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
+# ページ管理
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
+# スタートページ
 if st.session_state.page == "start":
     st.title("SPI言語演習（20問ランダム）")
     st.markdown("- 制限時間あり\n- 回答後に即時解説\n- スコア表示")
+
     if st.button("演習スタート"):
         df = load_questions()
         filtered = df[df["category"].str.strip() == "言語"]
@@ -63,6 +68,7 @@ if st.session_state.page == "start":
         st.session_state.page = "quiz"
         st.rerun()
 
+# 出題ページ
 elif st.session_state.page == "quiz":
     idx = st.session_state.q_index
     if idx >= 20:
@@ -90,7 +96,7 @@ elif st.session_state.page == "quiz":
 
     if not st.session_state.get(feedback_key, False):
         if remaining <= 0:
-            st.warning("⌛ 時間切れ！未回答として次へ進みます")
+            st.warning("⌛ 時間切れ！未回答として次へ")
             st.session_state.answers[idx] = None
             st.session_state.q_index += 1
             for k in list(st.session_state.keys()):
@@ -121,19 +127,16 @@ elif st.session_state.page == "quiz":
             st.markdown(f"正解：{correct.upper()} - {choices[correct_index]}")
         if q.get("explanation"):
             st.info(f"📘 解説：{q['explanation']}")
+
         if st.button("次へ"):
             st.session_state.q_index += 1
-            # ✅ セッション状態を漏れなくクリア！
+            # ✅ 完全クリア：解説残りを防止！
             for k in list(st.session_state.keys()):
-                if (
-                    k.startswith("picked_")
-                    or k.startswith("feedback_shown_")
-                    or k.startswith("choice_")
-                    or k.startswith("radio")
-                ):
+                if any(k.startswith(p) for p in ("picked_", "feedback_shown_", "choice_", "radio_")):
                     del st.session_state[k]
             st.rerun()
 
+# 結果ページ
 elif st.session_state.page == "result" or st.session_state.q_index >= 20:
     st.title("📊 結果発表")
     score = 0
