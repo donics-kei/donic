@@ -38,18 +38,18 @@ if not st.session_state.authenticated:
     if st.button("ログイン"):
         if username == "nics" and password == "nagasaki2025":
             st.session_state.authenticated = True
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
-# ページ初期化
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
 if st.session_state.page == "start":
     st.title("SPI言語演習（20問ランダム）")
     st.markdown("- 制限時間あり\n- 回答後に即時解説\n- スコア表示")
+
     if st.button("演習スタート"):
         df = load_questions()
         filtered = df[df["category"].str.strip() == "言語"]
@@ -62,13 +62,13 @@ if st.session_state.page == "start":
         st.session_state.q_index = 0
         st.session_state.start_times = [None] * 20
         st.session_state.page = "quiz"
-        st.rerun()
+        st.experimental_rerun()
 
 elif st.session_state.page == "quiz":
     idx = st.session_state.q_index
     if idx >= 20:
         st.session_state.page = "result"
-        st.rerun()
+        st.experimental_rerun()
 
     q = st.session_state.questions.iloc[idx]
     st.header(f"Q{idx+1}/20")
@@ -78,7 +78,6 @@ elif st.session_state.page == "quiz":
     choices = [q.get(f"choice{i+1}", "") for i in range(5)]
     choice_map = {f"{l}. {c}": l for l, c in zip(labels, choices)}
     radio_key = f"picked_{idx}"
-
     picked = st.radio("選択肢を選んでください：", list(choice_map.keys()), index=None, key=radio_key)
 
     if st.session_state.start_times[idx] is None:
@@ -94,22 +93,21 @@ elif st.session_state.page == "quiz":
         if remaining <= 0:
             st.warning("⌛ 時間切れ！未回答として次へ進みます")
             st.session_state.answers[idx] = None
-            st.session_state.q_index += 1
-            # ✅ 完全クリア
             for k in [f"picked_{idx}", f"feedback_shown_{idx}"]:
                 st.session_state.pop(k, None)
-            st.rerun()
+            st.session_state.q_index += 1
+            st.experimental_rerun()
         elif st.button("回答する"):
             if picked:
                 sel = choice_map[picked]
                 st.session_state.answers[idx] = sel
                 st.session_state[feedback_key] = True
-                st.rerun()
+                st.experimental_rerun()
             else:
                 st.warning("選択肢を選んでください。")
         else:
             time.sleep(1)
-            st.rerun()
+            st.experimental_rerun()
     else:
         sel = st.session_state.answers[idx]
         correct = str(q["answer"]).lower().strip()
@@ -123,13 +121,11 @@ elif st.session_state.page == "quiz":
             st.markdown(f"正解：{correct.upper()} - {choices[correct_index]}")
         if q.get("explanation"):
             st.info(f"📘 解説：{q['explanation']}")
-
         if st.button("次へ"):
-            # ✅ セッション完全クリア（残留防止）
             for k in [f"picked_{idx}", f"feedback_shown_{idx}"]:
                 st.session_state.pop(k, None)
             st.session_state.q_index += 1
-            st.rerun()
+            st.experimental_rerun()
 
 elif st.session_state.page == "result":
     st.title("📊 結果発表")
@@ -156,5 +152,5 @@ elif st.session_state.page == "result":
         for k in list(st.session_state.keys()):
             if k != "authenticated":
                 del st.session_state[k]
-        st.rerun()
+        st.experimental_rerun()
 
