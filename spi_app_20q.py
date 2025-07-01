@@ -64,7 +64,6 @@ if st.session_state.page == "start":
         st.session_state.answers = [None] * 20
         st.session_state.q_index = 0
         st.session_state.start_times = [None] * 20
-        st.session_state.feedback_flags = [False] * 20
         st.session_state.page = "quiz"
         st.rerun()
 
@@ -89,20 +88,15 @@ elif st.session_state.page == "quiz":
     remaining = int(q.get("time_limit", 60) - (time.time() - st.session_state.start_times[idx]))
     st.info(f"残り時間：{remaining}秒")
 
-    if remaining <= 0 and not st.session_state.feedback_flags[idx]:
+    if remaining <= 0:
         st.error("時間切れ！")
         st.session_state.answers[idx] = None
-        st.session_state.feedback_flags[idx] = True
+        st.session_state.q_index += 1
         st.rerun()
 
-    if not st.session_state.feedback_flags[idx]:
-        if picked and st.button("回答する"):
-            sel = choice_map[picked]
-            st.session_state.answers[idx] = sel
-            st.session_state.feedback_flags[idx] = True
-            st.rerun()
-    else:
-        sel = st.session_state.answers[idx]
+    if picked and st.button("回答する"):
+        sel = choice_map[picked]
+        st.session_state.answers[idx] = sel
         correct = str(q["answer"]).lower().strip()
         correct_index = labels.index(correct) if correct in labels else -1
         st.subheader("解答結果")
@@ -117,8 +111,7 @@ elif st.session_state.page == "quiz":
         if st.button("次へ"):
             st.session_state.q_index += 1
             st.rerun()
-
-    if not st.session_state.feedback_flags[idx]:
+    else:
         time.sleep(1)
         st.rerun()
 
@@ -133,7 +126,6 @@ elif st.session_state.page == "result" or st.session_state.q_index >= 20:
         choices = [q.get(f"choice{j+1}", "") for j in range(5)]
         your_txt = choices[labels.index(your)] if your in labels else "未回答"
         correct_txt = choices[labels.index(answer)] if answer in labels else "不明"
-
         st.markdown(f"**Q{i+1}: {q['question']}** {'✅' if correct else '❌'}")
         st.markdown(f"あなたの回答：{your.upper() if your else '未回答'} - {your_txt}")
         st.markdown(f"正解：{answer.upper()} - {correct_txt}")
@@ -147,6 +139,5 @@ elif st.session_state.page == "result" or st.session_state.q_index >= 20:
 
     if st.button("もう一度挑戦"):
         for k in list(st.session_state.keys()):
-            if k != "authenticated":
-                del st.session_state[k]
+            del st.session_state[k]
         st.rerun()
