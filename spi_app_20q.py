@@ -15,6 +15,7 @@ html, body, [class*="css"] {
 </style>
 """, unsafe_allow_html=True)
 
+# ロゴ（任意）
 if os.path.exists("nics_logo.png"):
     st.image("nics_logo.png", width=260)
 
@@ -25,12 +26,13 @@ def load_questions():
         st.error("CSVが見つかりません。")
         st.stop()
     df = pd.read_csv(path)
-    df["time_limit"] = df["time_limit"].fillna(60)
+    df["time_limit"] = df["time_limit"].fillna(60)  # 欠損補完
     return df
 
-# 認証
+# ログイン状態
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
+
 if not st.session_state.authenticated:
     st.title("ログイン")
     username = st.text_input("ユーザーID")
@@ -43,20 +45,20 @@ if not st.session_state.authenticated:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
-# 初期ページ
+# 初期ページ設定
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
-# ==== スタート画面 ====
+# ==== スタートページ ====
 if st.session_state.page == "start":
     st.title("SPI言語演習（20問ランダム）")
-    st.markdown("- 制限時間あり\n- 回答後に解説表示\n- 全問終了後スコア")
+    st.markdown("- 制限時間あり\n- 解説つき\n- スコア自動集計")
 
     if st.button("演習スタート"):
         df = load_questions()
         filtered = df[df["category"].str.strip() == "言語"]
         if len(filtered) < 20:
-            st.error("言語カテゴリの問題が20問未満です。")
+            st.error("「言語」カテゴリの問題が20問未満です。")
             st.stop()
         random.seed(time.time())
         selected = filtered.sample(n=20, random_state=random.randint(1, 999999)).reset_index(drop=True)
@@ -70,7 +72,7 @@ if st.session_state.page == "start":
                 del st.session_state[k]
         st.rerun()
 
-# ==== 問題出題 ====
+# ==== 問題ページ ====
 elif st.session_state.page == "quiz":
     idx = st.session_state.q_index
     if idx >= 20:
@@ -94,22 +96,20 @@ elif st.session_state.page == "quiz":
     remaining = int(time_limit - (time.time() - st.session_state.start_times[idx]))
     feedback_key = f"feedback_shown_{idx}"
 
-    timer_container = st.empty()
+    timer_box = st.empty()
     if remaining <= 0 and not st.session_state.get(feedback_key, False):
         st.warning("⌛ 時間切れ！未回答として次へ")
         st.session_state.answers[idx] = None
         st.session_state.q_index += 1
         st.rerun()
-    else:
-        timer_container.info(f"⏱ 残り時間：{remaining}秒")
-
-    if not st.session_state.get(feedback_key, False):
+    elif not st.session_state.get(feedback_key, False):
+        timer_box.info(f"⏱ 残り時間：{remaining}秒")
         if picked and st.button("回答する"):
             sel = choice_map[picked]
             st.session_state.answers[idx] = sel
             st.session_state[feedback_key] = True
             st.rerun()
-        elif remaining > 0:
+        else:
             time.sleep(1)
             st.rerun()
     else:
@@ -129,7 +129,7 @@ elif st.session_state.page == "quiz":
             st.session_state.q_index += 1
             st.rerun()
 
-# ==== 結果 ====
+# ==== 結果ページ ====
 elif st.session_state.page == "result" or st.session_state.q_index >= 20:
     st.title("📊 結果発表")
     score = 0
@@ -155,3 +155,4 @@ elif st.session_state.page == "result" or st.session_state.q_index >= 20:
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()
+
