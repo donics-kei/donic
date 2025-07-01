@@ -6,10 +6,7 @@ import random
 
 st.set_page_config(page_title="SPI言語20問", layout="centered")
 
-# スマホモード手動切り替え
-is_mobile = st.sidebar.checkbox("スマホモードで表示", value=False)
-st.session_state["is_mobile"] = is_mobile
-
+# スタイル調整
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -31,7 +28,6 @@ def load_questions():
     df["time_limit"] = df["time_limit"].fillna(60)
     return df
 
-# ログイン認証
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -47,14 +43,12 @@ if not st.session_state.authenticated:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
-# ページ管理
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
 if st.session_state.page == "start":
     st.title("SPI言語演習（20問ランダム）")
     st.markdown("- 制限時間あり\n- 回答後に即時解説\n- スコア表示")
-
     if st.button("演習スタート"):
         df = load_questions()
         filtered = df[df["category"].str.strip() == "言語"]
@@ -96,7 +90,7 @@ elif st.session_state.page == "quiz":
 
     if not st.session_state.get(feedback_key, False):
         if remaining <= 0:
-            st.warning("⌛ 時間切れ！未回答として次へ")
+            st.warning("⌛ 時間切れ！未回答として次へ進みます")
             st.session_state.answers[idx] = None
             st.session_state.q_index += 1
             for k in list(st.session_state.keys()):
@@ -129,8 +123,14 @@ elif st.session_state.page == "quiz":
             st.info(f"📘 解説：{q['explanation']}")
         if st.button("次へ"):
             st.session_state.q_index += 1
+            # ✅ セッション状態を漏れなくクリア！
             for k in list(st.session_state.keys()):
-                if k.startswith("picked_") or k.startswith("feedback_shown_"):
+                if (
+                    k.startswith("picked_")
+                    or k.startswith("feedback_shown_")
+                    or k.startswith("choice_")
+                    or k.startswith("radio")
+                ):
                     del st.session_state[k]
             st.rerun()
 
