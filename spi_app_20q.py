@@ -3,8 +3,14 @@ import pandas as pd
 import time
 import os
 import random
+import platform
 
 st.set_page_config(page_title="SPI言語20問", layout="centered")
+
+# スマホ判定（User-Agent参照）
+user_agent = st.get_option("browser.user_agent") or ""
+is_mobile = ("Android" in user_agent) or ("iPhone" in user_agent)
+st.session_state["is_mobile"] = is_mobile
 
 # スタイル調整（スマホ対応）
 st.markdown("""
@@ -92,9 +98,14 @@ elif st.session_state.page == "quiz":
     raw_limit = q.get("time_limit", 60)
     time_limit = 60 if pd.isna(raw_limit) else int(raw_limit)
     remaining = int(time_limit - (time.time() - st.session_state.start_times[idx]))
-    feedback_key = f"feedback_shown_{idx}"
 
+    feedback_key = f"feedback_shown_{idx}"
     st.info(f"⏱ 残り時間：{remaining} 秒")
+
+    # --- スマホ用手動更新ボタン ---
+    if is_mobile and not st.session_state.get(feedback_key, False):
+        if st.button("⏳ 時間を更新する（スマホ用）"):
+            st.rerun()
 
     if not st.session_state.get(feedback_key, False):
         if remaining <= 0:
@@ -105,6 +116,9 @@ elif st.session_state.page == "quiz":
                 if k.startswith("picked_") or k.startswith("feedback_shown_"):
                     del st.session_state[k]
             st.rerun()
+        elif not is_mobile:
+            time.sleep(1)
+            st.rerun()
         elif st.button("回答する"):
             if picked:
                 sel = choice_map[picked]
@@ -113,9 +127,6 @@ elif st.session_state.page == "quiz":
                 st.rerun()
             else:
                 st.warning("選択肢を選んでから回答してください。")
-        else:
-            time.sleep(1)
-            st.rerun()
     else:
         sel = st.session_state.answers[idx]
         correct = str(q["answer"]).lower().strip()
@@ -159,6 +170,6 @@ elif st.session_state.page == "result" or st.session_state.q_index >= 20:
 
     if st.button("もう一度挑戦"):
         for k in list(st.session_state.keys()):
-            if k != "authenticated":  # ログイン状態は保持
+            if k != "authenticated":
                 del st.session_state[k]
         st.rerun()
