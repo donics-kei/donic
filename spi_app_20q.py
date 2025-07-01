@@ -3,16 +3,14 @@ import pandas as pd
 import time
 import os
 import random
-import platform
 
 st.set_page_config(page_title="SPI言語20問", layout="centered")
 
-# スマホ判定（User-Agent参照）
-user_agent = st.get_option("browser.user_agent") or ""
-is_mobile = ("Android" in user_agent) or ("iPhone" in user_agent)
+# ✅ スマホモード切り替え：必要に応じて手動選択（または自動検出に変更可）
+is_mobile = st.sidebar.checkbox("スマホモードで表示", value=False)
 st.session_state["is_mobile"] = is_mobile
 
-# スタイル調整（スマホ対応）
+# スタイル調整（フォント大きめ）
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -102,9 +100,9 @@ elif st.session_state.page == "quiz":
     feedback_key = f"feedback_shown_{idx}"
     st.info(f"⏱ 残り時間：{remaining} 秒")
 
-    # --- スマホ用手動更新ボタン ---
+    # スマホは手動カウント更新ボタン
     if is_mobile and not st.session_state.get(feedback_key, False):
-        if st.button("⏳ 時間を更新する（スマホ用）"):
+        if st.button("⏳ 時間を更新（スマホ用）"):
             st.rerun()
 
     if not st.session_state.get(feedback_key, False):
@@ -146,7 +144,6 @@ elif st.session_state.page == "quiz":
                 if k.startswith("picked_") or k.startswith("feedback_shown_"):
                     del st.session_state[k]
             st.rerun()
-# ==== 結果ページ ====
 elif st.session_state.page == "result" or st.session_state.q_index >= 20:
     st.title("📊 結果発表")
     score = 0
@@ -158,6 +155,7 @@ elif st.session_state.page == "result" or st.session_state.q_index >= 20:
         choices = [q.get(f"choice{j+1}", "") for j in range(5)]
         your_txt = choices[labels.index(your)] if your in labels else "未回答"
         correct_txt = choices[labels.index(answer)] if answer in labels else "不明"
+
         st.markdown(f"**Q{i+1}: {q['question']}** {'✅' if correct else '❌'}")
         st.markdown(f"あなたの回答：{your.upper() if your else '未回答'} - {your_txt}")
         st.markdown(f"正解：{answer.upper()} - {correct_txt}")
@@ -166,6 +164,7 @@ elif st.session_state.page == "result" or st.session_state.q_index >= 20:
         st.markdown("---")
         if correct:
             score += 1
+
     st.success(f"🎯 最終スコア：{score}/20")
 
     if st.button("もう一度挑戦"):
@@ -173,3 +172,4 @@ elif st.session_state.page == "result" or st.session_state.q_index >= 20:
             if k != "authenticated":
                 del st.session_state[k]
         st.rerun()
+
