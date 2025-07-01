@@ -27,7 +27,6 @@ def load_questions():
     df["time_limit"] = df["time_limit"].fillna(60)
     return df
 
-# 認証
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -38,7 +37,7 @@ if not st.session_state.authenticated:
     if st.button("ログイン"):
         if username == "nics" and password == "nagasaki2025":
             st.session_state.authenticated = True
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
@@ -62,13 +61,13 @@ if st.session_state.page == "start":
         st.session_state.q_index = 0
         st.session_state.start_times = [None] * 20
         st.session_state.page = "quiz"
-        st.experimental_rerun()
+        st.rerun()
 
 elif st.session_state.page == "quiz":
     idx = st.session_state.q_index
     if idx >= 20:
         st.session_state.page = "result"
-        st.experimental_rerun()
+        st.rerun()
 
     q = st.session_state.questions.iloc[idx]
     st.header(f"Q{idx+1}/20")
@@ -96,18 +95,18 @@ elif st.session_state.page == "quiz":
             for k in [f"picked_{idx}", f"feedback_shown_{idx}"]:
                 st.session_state.pop(k, None)
             st.session_state.q_index += 1
-            st.experimental_rerun()
+            st.rerun()
         elif st.button("回答する"):
             if picked:
                 sel = choice_map[picked]
                 st.session_state.answers[idx] = sel
                 st.session_state[feedback_key] = True
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.warning("選択肢を選んでください。")
         else:
             time.sleep(1)
-            st.experimental_rerun()
+            st.rerun()
     else:
         sel = st.session_state.answers[idx]
         correct = str(q["answer"]).lower().strip()
@@ -125,7 +124,7 @@ elif st.session_state.page == "quiz":
             for k in [f"picked_{idx}", f"feedback_shown_{idx}"]:
                 st.session_state.pop(k, None)
             st.session_state.q_index += 1
-            st.experimental_rerun()
+            st.rerun()
 
 elif st.session_state.page == "result":
     st.title("📊 結果発表")
@@ -152,5 +151,5 @@ elif st.session_state.page == "result":
         for k in list(st.session_state.keys()):
             if k != "authenticated":
                 del st.session_state[k]
-        st.experimental_rerun()
+        st.rerun()
 
