@@ -6,7 +6,7 @@ import random
 
 st.set_page_config(page_title="SPI言語20問", layout="centered")
 
-# スタイル（スマホ対応）
+# スタイル調整（スマホ対応）
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -23,13 +23,13 @@ if os.path.exists("nics_logo.png"):
 def load_questions():
     path = os.path.join(os.path.dirname(__file__), "spi_questions_converted.csv")
     if not os.path.exists(path):
-        st.error("CSVが見つかりません。")
+        st.error("CSVファイルが見つかりません。")
         st.stop()
     df = pd.read_csv(path)
     df["time_limit"] = df["time_limit"].fillna(60)
     return df
 
-# 認証状態
+# 認証状態を保持
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -42,17 +42,17 @@ if not st.session_state.authenticated:
             st.session_state.authenticated = True
             st.rerun()
         else:
-            st.error("ユーザーIDまたはパスワードが違います。")
+            st.error("ユーザーIDまたはパスワードが間違っています。")
     st.stop()
 
-# ページ初期化
+# ページ管理
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
 # ==== スタートページ ====
 if st.session_state.page == "start":
     st.title("SPI言語演習（20問ランダム）")
-    st.markdown("- 制限時間あり\n- 回答後に解説表示\n- スコア表示")
+    st.markdown("- 制限時間あり\n- 回答後に解説表示\n- スコア付き")
 
     if st.button("演習スタート"):
         df = load_questions()
@@ -69,7 +69,7 @@ if st.session_state.page == "start":
         st.session_state.page = "quiz"
         st.rerun()
 
-# ==== 問題ページ ====
+# ==== 出題ページ ====
 elif st.session_state.page == "quiz":
     idx = st.session_state.q_index
     if idx >= 20:
@@ -92,13 +92,13 @@ elif st.session_state.page == "quiz":
     raw_limit = q.get("time_limit", 60)
     time_limit = 60 if pd.isna(raw_limit) else int(raw_limit)
     remaining = int(time_limit - (time.time() - st.session_state.start_times[idx]))
-
     feedback_key = f"feedback_shown_{idx}"
-    st.info(f"⏱ 残り時間：{remaining}秒")
+
+    st.info(f"⏱ 残り時間：{remaining} 秒")
 
     if not st.session_state.get(feedback_key, False):
         if remaining <= 0:
-            st.warning("⌛ 時間切れ！未回答として次へ")
+            st.warning("⌛ 時間切れ！未回答として次へ進みます")
             st.session_state.answers[idx] = None
             st.session_state.q_index += 1
             for k in list(st.session_state.keys()):
@@ -135,7 +135,6 @@ elif st.session_state.page == "quiz":
                 if k.startswith("picked_") or k.startswith("feedback_shown_"):
                     del st.session_state[k]
             st.rerun()
-
 # ==== 結果ページ ====
 elif st.session_state.page == "result" or st.session_state.q_index >= 20:
     st.title("📊 結果発表")
@@ -160,6 +159,6 @@ elif st.session_state.page == "result" or st.session_state.q_index >= 20:
 
     if st.button("もう一度挑戦"):
         for k in list(st.session_state.keys()):
-            del st.session_state[k]
+            if k != "authenticated":  # ログイン状態は保持
+                del st.session_state[k]
         st.rerun()
-
