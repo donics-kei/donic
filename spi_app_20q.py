@@ -21,12 +21,13 @@ if os.path.exists("nics_logo.png"):
 def load_questions():
     path = os.path.join(os.path.dirname(__file__), "spi_questions_converted.csv")
     if not os.path.exists(path):
-        st.error("CSVが見つかりません。")
+        st.error("CSVファイルが見つかりません。")
         st.stop()
     df = pd.read_csv(path)
     df["time_limit"] = df["time_limit"].fillna(60)
     return df
 
+# ログイン管理
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -42,12 +43,14 @@ if not st.session_state.authenticated:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
+# ページ初期化
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
+# === スタートページ ===
 if st.session_state.page == "start":
     st.title("SPI言語演習（20問ランダム）")
-    st.markdown("- 制限時間あり\n- 回答後に即時解説\n- スコア表示")
+    st.markdown("- 制限時間あり\n- 回答後に解説表示\n- スコア付き")
 
     if st.button("演習スタート"):
         df = load_questions()
@@ -63,6 +66,7 @@ if st.session_state.page == "start":
         st.session_state.page = "quiz"
         st.rerun()
 
+# === 出題・解説ページ ===
 elif st.session_state.page == "quiz":
     idx = st.session_state.q_index
     if idx >= 20:
@@ -70,47 +74,18 @@ elif st.session_state.page == "quiz":
         st.rerun()
 
     q = st.session_state.questions.iloc[idx]
-    st.header(f"Q{idx+1}/20")
-    st.markdown(f"**{q['question']}**")
-
+    feedback_key = f"feedback_shown_{idx}"
     labels = ["a", "b", "c", "d", "e"]
     choices = [q.get(f"choice{i+1}", "") for i in range(5)]
     choice_map = {f"{l}. {c}": l for l, c in zip(labels, choices)}
-    radio_key = f"picked_{idx}"
-    picked = st.radio("選択肢を選んでください：", list(choice_map.keys()), index=None, key=radio_key)
 
-    if st.session_state.start_times[idx] is None:
-        st.session_state.start_times[idx] = time.time()
-    elapsed = time.time() - st.session_state.start_times[idx]
-    time_limit = int(q.get("time_limit", 60))
-    remaining = max(0, int(time_limit - elapsed))
-    st.info(f"⏱ 残り時間：{remaining} 秒")
-
-    feedback_key = f"feedback_shown_{idx}"
-
-    if not st.session_state.get(feedback_key, False):
-        if remaining <= 0:
-            st.warning("⌛ 時間切れ！未回答として次へ進みます")
-            st.session_state.answers[idx] = None
-            for k in [f"picked_{idx}", f"feedback_shown_{idx}"]:
-                st.session_state.pop(k, None)
-            st.session_state.q_index += 1
-            st.rerun()
-        elif st.button("回答する"):
-            if picked:
-                sel = choice_map[picked]
-                st.session_state.answers[idx] = sel
-                st.session_state[feedback_key] = True
-                st.rerun()
-            else:
-                st.warning("選択肢を選んでください。")
-        else:
-            time.sleep(1)
-            st.rerun()
-    else:
+    # ==== 解説フェーズ ====
+    if st.session_state.get(feedback_key, False):
+        st.header(f"Q{idx+1}/20")
         sel = st.session_state.answers[idx]
         correct = str(q["answer"]).lower().strip()
         correct_index = labels.index(correct) if correct in labels else -1
+
         st.subheader("解答結果")
         if sel == correct:
             st.success("正解！")
@@ -126,6 +101,39 @@ elif st.session_state.page == "quiz":
             st.session_state.q_index += 1
             st.rerun()
 
+    # ==== 出題フェーズ ====
+    else:
+        st.header(f"Q{idx+1}/20")
+        st.markdown(f"**{q['question']}**")
+        radio_key = f"picked_{idx}"
+        picked = st.radio("選択肢を選んでください：", list(choice_map.keys()), index=None, key=radio_key)
+
+        if st.session_state.start_times[idx] is None:
+            st.session_state.start_times[idx] = time.time()
+
+        elapsed = time.time() - st.session_state.start_times[idx]
+        time_limit = int(q.get("time_limit", 60))
+        remaining = max(0, int(time_limit - elapsed))
+        st.info(f"⏱ 残り時間：{remaining} 秒")
+
+        if remaining <= 0:
+            st.warning("⌛ 時間切れ！未回答として次へ進みます")
+            st.session_state.answers[idx] = None
+            st.session_state[feedback_key] = True
+            st.rerun()
+        elif st.button("回答する"):
+            if picked:
+                sel = choice_map[picked]
+                st.session_state.answers[idx] = sel
+                st.session_state[feedback_key] = True
+                st.rerun()
+            else:
+                st.warning("選択肢を選んでください。")
+        else:
+            time.sleep(1)
+            st.rerun()
+
+# === 結果ページ ===
 elif st.session_state.page == "result":
     st.title("📊 結果発表")
     score = 0
