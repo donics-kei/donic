@@ -6,7 +6,7 @@ import random
 
 st.set_page_config(page_title="SPI言語20問", layout="centered")
 
-# スマホモード選択（任意で切り替え）
+# スマホモード手動切り替え
 is_mobile = st.sidebar.checkbox("スマホモードで表示", value=False)
 st.session_state["is_mobile"] = is_mobile
 
@@ -31,7 +31,7 @@ def load_questions():
     df["time_limit"] = df["time_limit"].fillna(60)
     return df
 
-# ログイン認証状態
+# ログイン認証
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -47,7 +47,7 @@ if not st.session_state.authenticated:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
-# ページ遷移管理
+# ページ管理
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
@@ -85,7 +85,6 @@ elif st.session_state.page == "quiz":
     radio_key = f"picked_{idx}"
     picked = st.radio("選択肢を選んでください：", list(choice_map.keys()), index=None, key=radio_key)
 
-    # タイマー
     if st.session_state.start_times[idx] is None:
         st.session_state.start_times[idx] = time.time()
     elapsed = time.time() - st.session_state.start_times[idx]
@@ -97,7 +96,7 @@ elif st.session_state.page == "quiz":
 
     if not st.session_state.get(feedback_key, False):
         if remaining <= 0:
-            st.warning("⌛ 時間切れ！未回答として次へ進みます")
+            st.warning("⌛ 時間切れ！未回答として次へ")
             st.session_state.answers[idx] = None
             st.session_state.q_index += 1
             for k in list(st.session_state.keys()):
