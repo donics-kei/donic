@@ -9,21 +9,22 @@ DEFAULT_TIME_LIMIT = 60
 def load_questions():
     base_dir = os.path.dirname(__file__)
     csv_path = os.path.join(base_dir, "spi_questions_converted.csv")
-    return pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path)
+    df = df.dropna(subset=["question"])  # ❗ 空白問題を除去
+    return df
 
 # === セッション初期化 ===
-defaults = {
+for k, v in {
     "page": "select",
     "q_index": 0,
     "stage": "quiz",
     "answers": [],
     "start_times": [],
-}
-for k, v in defaults.items():
+}.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# === セッション切断時の復旧 ===
+# === セッション復旧 ===
 if st.session_state.page != "select" and "questions" not in st.session_state:
     try:
         df = load_questions()
@@ -37,10 +38,10 @@ if st.session_state.page != "select" and "questions" not in st.session_state:
         st.rerun()
         st.stop()
 
-# === 問題ステージのUI描画 ===
-def render_quiz(q, idx, choices, labeled_choices, labels):
+# === UI関数 ===
+def render_quiz(q, idx, choices, labeled, labels):
     key = f"q{idx}"
-    picked = st.radio("選択肢を選んでください：", labeled_choices, key=key, index=None)
+    picked = st.radio("選択肢を選んでください：", labeled, key=key, index=None)
 
     if st.session_state.start_times[idx] is None:
         st.session_state.start_times[idx] = time.time()
@@ -58,7 +59,7 @@ def render_quiz(q, idx, choices, labeled_choices, labels):
 
     if st.button("回答する"):
         if picked:
-            st.session_state.answers[idx] = labels[labeled_choices.index(picked)]
+            st.session_state.answers[idx] = labels[labeled.index(picked)]
             st.session_state.stage = "explanation"
             st.rerun()
             st.stop()
@@ -69,7 +70,6 @@ def render_quiz(q, idx, choices, labeled_choices, labels):
         st.rerun()
         st.stop()
 
-# === 解説ステージのUI描画 ===
 def render_explanation(q, idx, choices, labels):
     user = st.session_state.answers[idx]
     correct = str(q['answer']).lower().strip()
@@ -98,8 +98,7 @@ def render_explanation(q, idx, choices, labels):
         st.rerun()
         st.stop()
 
-# === ステージコントローラー ===
-def render_current_stage():
+def render_stage():
     idx = st.session_state.q_index
     q = st.session_state.questions.iloc[idx]
     labels = ['a', 'b', 'c', 'd', 'e']
@@ -110,11 +109,6 @@ def render_current_stage():
         render_quiz(q, idx, choices, labeled, labels)
     elif st.session_state.stage == "explanation":
         render_explanation(q, idx, choices, labels)
-    else:
-        st.warning("無効なステージです。最初に戻ります。")
-        st.session_state.page = "select"
-        st.rerun()
-        st.stop()
 
 # === 選択ページ ===
 if st.session_state.page == "select":
@@ -145,7 +139,7 @@ if st.session_state.page == "quiz":
         st.rerun()
         st.stop()
     st.title(f"SPI模擬試験 Q{st.session_state.q_index+1}/{st.session_state.num_questions}")
-    render_current_stage()
+    render_stage()
 
 # === 結果ページ ===
 if st.session_state.page == "result":
@@ -176,4 +170,3 @@ if st.session_state.page == "result":
                 del st.session_state[k]
         st.rerun()
         st.stop()
-
