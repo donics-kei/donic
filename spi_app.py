@@ -15,35 +15,34 @@ def load_questions():
     df = df[df["question"] != ""]
     return df
 
-# 初期化
-defaults = {
+# === 初期化 ===
+for k, v in {
     "page": "select",
     "q_index": 0,
     "stage": "quiz",
     "answers": [],
     "start_times": [],
-}
-for k, v in defaults.items():
+}.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# セッション復元
+# === セッション復元 ===
 if st.session_state.page != "select" and "questions" not in st.session_state:
     try:
         df = load_questions()
         cat = st.session_state.get("category", "言語")
         num = st.session_state.get("num_questions", 20)
         st.session_state.questions = df[df["category"] == cat].sample(n=num).reset_index(drop=True)
-        st.warning("⚠️ セッション復元しました。")
+        st.warning("⚠️ セッションが切れたため、問題を復元しました。")
     except:
         st.session_state.page = "select"
         st.rerun()
         return
 
-# クイズ描画
+# === 出題表示 ===
 def render_quiz(q, idx, choices, labeled, labels):
     if st.session_state.stage != "quiz":
-        return
+        return  # 🔐 安全対策
 
     picked = st.radio("選択肢を選んでください：", labeled, key=f"q{idx}", index=None)
 
@@ -54,7 +53,7 @@ def render_quiz(q, idx, choices, labeled, labels):
     st.info(f"⏳ 残り時間：{remaining} 秒")
 
     if remaining <= 0:
-        st.error("⌛ 時間切れ")
+        st.error("⌛ 時間切れ！")
         st.session_state.answers[idx] = None
         st.session_state.stage = "explanation"
         st.rerun()
@@ -74,7 +73,7 @@ def render_quiz(q, idx, choices, labeled, labels):
         st.rerun()
         return
 
-# 解説描画
+# === 解説表示 ===
 def render_explanation(q, idx, choices, labels):
     if st.session_state.stage != "explanation":
         return
@@ -106,10 +105,10 @@ def render_explanation(q, idx, choices, labels):
         st.rerun()
         return
 
-# ステージ描画
+# === ステージ描画 ===
 def render_current_stage():
     if st.session_state.stage not in ["quiz", "explanation"]:
-        st.warning("⚠️ ステージ不明。最初に戻ります")
+        st.warning("ステージ不明。selectに戻ります")
         st.session_state.page = "select"
         st.rerun()
         return
@@ -124,7 +123,7 @@ def render_current_stage():
     if question_text:
         st.subheader(question_text)
     else:
-        st.error("❗ この問題は空欄です。")
+        st.error("❗ この問題は空欄です")
         st.json(q.to_dict())
         return
 
@@ -135,7 +134,7 @@ def render_current_stage():
         render_explanation(q, idx, choices, labels)
         return
 
-# ステージ：選択
+# === ステージ：選択 ===
 if st.session_state.page == "select":
     st.title("SPI模擬試験")
     st.session_state.temp_category = st.radio("出題カテゴリー：", ["言語", "非言語"])
@@ -158,7 +157,7 @@ if st.session_state.page == "select":
         return
     st.stop()
 
-# ステージ：クイズ
+# === ステージ：出題 ===
 if st.session_state.page == "quiz":
     if st.session_state.q_index >= st.session_state.num_questions:
         st.session_state.page = "result"
@@ -168,7 +167,7 @@ if st.session_state.page == "quiz":
     render_current_stage()
     return
 
-# ステージ：結果
+# === ステージ：結果 ===
 if st.session_state.page == "result":
     st.title("📊 結果発表")
     score = 0
@@ -185,14 +184,4 @@ if st.session_state.page == "result":
         st.markdown(f"あなたの回答：{user.upper() if user else '未回答'} - {user_txt}")
         st.markdown(f"正解：{correct.upper()} - {correct_txt}")
         if q.get("explanation"):
-            st.markdown(f"📘 解説：{q['explanation']}")
-        st.markdown("---")
-        if correct_bool:
-            score += 1
-
-    st.success(f"🎯 スコア：{score} / {st.session_state.num_questions}")
-    if st.button("もう一度解く"):
-        for k in list(st.session_state.keys()):
-            if k not in ["authenticated"]:
-                del st.session_state[k]
-        st.rerun()
+            st.markdown(f"📘 解説：{
