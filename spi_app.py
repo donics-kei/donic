@@ -16,17 +16,18 @@ def load_questions():
     return df
 
 # 初期化
-for k, v in {
+defaults = {
     "page": "select",
     "q_index": 0,
     "stage": "quiz",
     "answers": [],
     "start_times": [],
-}.items():
+}
+for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# セッション復元（questionsが消えたとき）
+# セッション復元
 if st.session_state.page != "select" and "questions" not in st.session_state:
     try:
         df = load_questions()
@@ -39,13 +40,10 @@ if st.session_state.page != "select" and "questions" not in st.session_state:
         st.rerun()
         st.stop()
 
-# クイズ描画
 def render_quiz(q, idx, choices, labeled, labels):
     picked = st.radio("選択肢を選んでください：", labeled, key=f"q{idx}", index=None)
-
     if st.session_state.start_times[idx] is None:
         st.session_state.start_times[idx] = time.time()
-
     remaining = max(0, int(DEFAULT_TIME_LIMIT - (time.time() - st.session_state.start_times[idx])))
     st.info(f"⏳ 残り時間：{remaining} 秒")
 
@@ -69,7 +67,6 @@ def render_quiz(q, idx, choices, labeled, labels):
         st.rerun()
         st.stop()
 
-# 解説描画
 def render_explanation(q, idx, choices, labels):
     user = st.session_state.answers[idx]
     correct = str(q["answer"]).lower().strip()
@@ -92,13 +89,12 @@ def render_explanation(q, idx, choices, labels):
     if st.button("次の問題へ"):
         st.session_state.q_index += 1
         st.session_state.stage = "quiz"
-        qkey = f"q{idx}"
-        if qkey in st.session_state:
-            del st.session_state[qkey]
+        del_key = f"q{idx}"
+        if del_key in st.session_state:
+            del st.session_state[del_key]
         st.rerun()
         st.stop()
 
-# 描画切替
 def render_current_stage():
     idx = st.session_state.q_index
     q = st.session_state.questions.iloc[idx]
@@ -106,20 +102,26 @@ def render_current_stage():
     choices = [q.get(f"choice{i+1}", "") for i in range(5)]
     labeled = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    text = str(q.get("question", "")).strip()
-    if text:
-        st.subheader(text)
+    question_text = str(q.get("question", "")).strip()
+    if question_text:
+        st.subheader(question_text)
     else:
-        st.error("❗ この問題は空欄です。")
+        st.error("❗ 問題文が空欄です。")
         st.json(q.to_dict())
         st.stop()
 
     if st.session_state.stage == "quiz":
         render_quiz(q, idx, choices, labeled, labels)
+        st.stop()
     elif st.session_state.stage == "explanation":
         render_explanation(q, idx, choices, labels)
+        st.stop()
+    else:
+        st.warning("❗ ステージ不明。select に戻ります")
+        st.session_state.page = "select"
+        st.rerun()
+        st.stop()
 
-# 選択画面
 if st.session_state.page == "select":
     st.title("SPI模擬試験")
     st.session_state.temp_category = st.radio("出題カテゴリー：", ["言語", "非言語"])
@@ -127,13 +129,14 @@ if st.session_state.page == "select":
     st.session_state.temp_mode = st.radio("採点方法：", ["その都度採点", "最後にまとめて採点"])
     if st.button("開始"):
         df = load_questions()
-        st.session_state.category = st.session_state.temp_category
-        st.session_state.num_questions = st.session_state.temp_num_questions
+        cat = st.session_state.temp_category
+        n = st.session_state.temp_num_questions
+        st.session_state.category = cat
+        st.session_state.num_questions = n
         st.session_state.mode = st.session_state.temp_mode
-        st.session_state.questions = df[df["category"] == st.session_state.category].sample(
-            n=st.session_state.num_questions).reset_index(drop=True)
-        st.session_state.answers = [None] * st.session_state.num_questions
-        st.session_state.start_times = [None] * st.session_state.num_questions
+        st.session_state.questions = df[df["category"] == cat].sample(n=n).reset_index(drop=True)
+        st.session_state.answers = [None] * n
+        st.session_state.start_times = [None] * n
         st.session_state.q_index = 0
         st.session_state.stage = "quiz"
         st.session_state.page = "quiz"
@@ -141,7 +144,6 @@ if st.session_state.page == "select":
         st.stop()
     st.stop()
 
-# 出題画面
 if st.session_state.page == "quiz":
     if st.session_state.q_index >= st.session_state.num_questions:
         st.session_state.page = "result"
@@ -150,7 +152,6 @@ if st.session_state.page == "quiz":
     st.title(f"Q{st.session_state.q_index + 1}/{st.session_state.num_questions}")
     render_current_stage()
 
-# 結果画面
 if st.session_state.page == "result":
     st.title("📊 結果発表")
     score = 0
