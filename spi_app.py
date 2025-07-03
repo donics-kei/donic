@@ -3,185 +3,167 @@ import pandas as pd
 import time
 import os
 
-DEFAULT_TIME_LIMIT = 60
+st.set_page_config(page_title="SPI言語20問", layout="centered")
+
+# フォント設定（任意）
+st.markdown("""
+<style>
+html, body, [class*="css"] {
+    font-size: 16px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ロゴ（あれば表示）
+if os.path.exists("nics_logo.png"):
+    st.image("nics_logo.png", width=260)
 
 @st.cache_data
 def load_questions():
-    base_dir = os.path.dirname(__file__)
-    csv_path = os.path.join(base_dir, "spi_questions_converted.csv")
-    df = pd.read_csv(csv_path)
+    path = os.path.join(os.path.dirname(__file__), "spi_questions_converted.csv")
+    if not os.path.exists(path):
+        st.error("CSVファイルが見つかりません。")
+        st.stop()
+    df = pd.read_csv(path)
     df.columns = df.columns.str.strip().str.lower()
+    df["time_limit"] = df.get("time_limit", 60)
     df["question"] = df["question"].astype(str).str.strip()
     df = df[df["question"] != ""]
     return df
 
-# === 初期化 ===
-for k, v in {
-    "page": "select",
-    "q_index": 0,
-    "stage": "quiz",
-    "answers": [],
-    "start_times": [],
-}.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+# === ログイン管理 ===
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-# === セッション復元 ===
-if st.session_state.page != "select" and "questions" not in st.session_state:
-    try:
-        df = load_questions()
-        cat = st.session_state.get("category", "言語")
-        num = st.session_state.get("num_questions", 20)
-        st.session_state.questions = df[df["category"] == cat].sample(n=num).reset_index(drop=True)
-        st.warning("⚠️ セッションが切れたため、問題を復元しました。")
-    except:
-        st.session_state.page = "select"
-        st.rerun()
-        return
-
-# === 出題表示 ===
-def render_quiz(q, idx, choices, labeled, labels):
-    if st.session_state.stage != "quiz":
-        return  # 🔐 安全対策
-
-    picked = st.radio("選択肢を選んでください：", labeled, key=f"q{idx}", index=None)
-
-    if st.session_state.start_times[idx] is None:
-        st.session_state.start_times[idx] = time.time()
-
-    remaining = max(0, int(DEFAULT_TIME_LIMIT - (time.time() - st.session_state.start_times[idx])))
-    st.info(f"⏳ 残り時間：{remaining} 秒")
-
-    if remaining <= 0:
-        st.error("⌛ 時間切れ！")
-        st.session_state.answers[idx] = None
-        st.session_state.stage = "explanation"
-        st.rerun()
-        return
-
-    if st.button("回答する"):
-        if picked:
-            st.session_state.answers[idx] = labels[labeled.index(picked)]
-            st.session_state.stage = "explanation"
+if not st.session_state.authenticated:
+    st.title("ログイン")
+    username = st.text_input("ユーザーID")
+    password = st.text_input("パスワード", type="password")
+    if st.button("ログイン"):
+        if username == "nics" and password == "nagasaki2025":
+            st.session_state.authenticated = True
             st.rerun()
-            return
         else:
-            st.warning("選択肢を選んでください。")
-            return
-    else:
-        time.sleep(1)
-        st.rerun()
-        return
-
-# === 解説表示 ===
-def render_explanation(q, idx, choices, labels):
-    if st.session_state.stage != "explanation":
-        return
-
-    user = st.session_state.answers[idx]
-    correct = str(q["answer"]).lower().strip()
-    ci = labels.index(correct) if correct in labels else -1
-    correct_txt = choices[ci] if ci >= 0 else "不明"
-    ui = labels.index(user) if user in labels else -1
-    user_txt = choices[ui] if ui >= 0 else "未回答"
-
-    if user == correct:
-        st.success("✅ 正解！")
-    elif user is None:
-        st.error("⏱ 未回答")
-    else:
-        st.error("❌ 不正解")
-
-    st.markdown(f"**正解：{correct.upper()} - {correct_txt}**")
-    if q.get("explanation"):
-        st.info(f"📘 解説：{q['explanation']}")
-
-    if st.button("次の問題へ"):
-        st.session_state.q_index += 1
-        st.session_state.stage = "quiz"
-        qkey = f"q{idx}"
-        if qkey in st.session_state:
-            del st.session_state[qkey]
-        st.rerun()
-        return
-
-# === ステージ描画 ===
-def render_current_stage():
-    if st.session_state.stage not in ["quiz", "explanation"]:
-        st.warning("ステージ不明。selectに戻ります")
-        st.session_state.page = "select"
-        st.rerun()
-        return
-
-    idx = st.session_state.q_index
-    q = st.session_state.questions.iloc[idx]
-    labels = ['a', 'b', 'c', 'd', 'e']
-    choices = [q.get(f"choice{i+1}", "") for i in range(5)]
-    labeled = [f"{l}. {c}" for l, c in zip(labels, choices)]
-
-    question_text = str(q.get("question", "")).strip()
-    if question_text:
-        st.subheader(question_text)
-    else:
-        st.error("❗ この問題は空欄です")
-        st.json(q.to_dict())
-        return
-
-    if st.session_state.stage == "quiz":
-        render_quiz(q, idx, choices, labeled, labels)
-        return
-    elif st.session_state.stage == "explanation":
-        render_explanation(q, idx, choices, labels)
-        return
-
-# === ステージ：選択 ===
-if st.session_state.page == "select":
-    st.title("SPI模擬試験")
-    st.session_state.temp_category = st.radio("出題カテゴリー：", ["言語", "非言語"])
-    st.session_state.temp_num_questions = st.number_input("出題数（1〜50）", 1, 50, value=20)
-    st.session_state.temp_mode = st.radio("採点方法：", ["その都度採点", "最後にまとめて採点"])
-    if st.button("開始"):
-        df = load_questions()
-        cat = st.session_state.temp_category
-        n = st.session_state.temp_num_questions
-        st.session_state.category = cat
-        st.session_state.num_questions = n
-        st.session_state.mode = st.session_state.temp_mode
-        st.session_state.questions = df[df["category"] == cat].sample(n=n).reset_index(drop=True)
-        st.session_state.answers = [None] * n
-        st.session_state.start_times = [None] * n
-        st.session_state.q_index = 0
-        st.session_state.stage = "quiz"
-        st.session_state.page = "quiz"
-        st.rerun()
-        return
+            st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
-# === ステージ：出題 ===
-if st.session_state.page == "quiz":
-    if st.session_state.q_index >= st.session_state.num_questions:
+# === ページ管理 ===
+if "page" not in st.session_state:
+    st.session_state.page = "start"
+
+# === スタートページ ===
+if st.session_state.page == "start":
+    st.title("SPI言語演習（20問ランダム）")
+    st.markdown("- 制限時間あり\n- 回答後に解説表示\n- スコア付き")
+
+    if st.button("演習スタート"):
+        df = load_questions()
+        filtered = df[df["category"].str.strip() == "言語"]
+        if len(filtered) < 20:
+            st.error("「言語」カテゴリの問題が20問未満です。")
+            st.stop()
+        selected = filtered.sample(n=20).reset_index(drop=True)
+        st.session_state.questions = selected
+        st.session_state.answers = [None] * 20
+        st.session_state.q_index = 0
+        st.session_state.start_times = [None] * 20
+        st.session_state.page = "quiz"
+        st.rerun()
+
+# === 出題・解説ページ ===
+elif st.session_state.page == "quiz":
+    idx = st.session_state.q_index
+    if idx >= 20:
         st.session_state.page = "result"
         st.rerun()
-        return
-    st.title(f"Q{st.session_state.q_index + 1}/{st.session_state.num_questions}")
-    render_current_stage()
-    return
 
-# === ステージ：結果 ===
-if st.session_state.page == "result":
+    q = st.session_state.questions.iloc[idx]
+    feedback_key = f"feedback_shown_{idx}"
+    labels = ["a", "b", "c", "d", "e"]
+    choices = [q.get(f"choice{i+1}", "") for i in range(5)]
+    choice_map = {f"{l}. {c}": l for l, c in zip(labels, choices)}
+
+    # === 解説フェーズ ===
+    if st.session_state.get(feedback_key, False):
+        st.header(f"Q{idx+1}/20")
+        sel = st.session_state.answers[idx]
+        correct = str(q["answer"]).lower().strip()
+        correct_index = labels.index(correct) if correct in labels else -1
+
+        st.subheader("解答結果")
+        if sel == correct:
+            st.success("正解！")
+        else:
+            st.error("不正解")
+        if correct_index >= 0:
+            st.markdown(f"正解：{correct.upper()} - {choices[correct_index]}")
+        if q.get("explanation"):
+            st.info(f"📘 解説：{q['explanation']}")
+
+        if st.button("次へ"):
+            for k in [f"picked_{idx}", f"feedback_shown_{idx}"]:
+                st.session_state.pop(k, None)
+            st.session_state.q_index += 1
+            st.rerun()
+
+    # === 出題フェーズ ===
+    else:
+        st.header(f"Q{idx+1}/20")
+        st.markdown(f"**{q['question']}**")
+        radio_key = f"picked_{idx}"
+        picked = st.radio("選択肢を選んでください：", list(choice_map.keys()), index=None, key=radio_key)
+
+        if st.session_state.start_times[idx] is None:
+            st.session_state.start_times[idx] = time.time()
+
+        elapsed = time.time() - st.session_state.start_times[idx]
+        time_limit = int(q.get("time_limit", 60))
+        remaining = max(0, int(time_limit - elapsed))
+        st.info(f"⏱ 残り時間：{remaining} 秒")
+
+        if remaining <= 0:
+            st.warning("⌛ 時間切れ！未回答として次へ進みます")
+            st.session_state.answers[idx] = None
+            st.session_state[feedback_key] = True
+            st.rerun()
+        elif st.button("回答する"):
+            if picked:
+                sel = choice_map[picked]
+                st.session_state.answers[idx] = sel
+                st.session_state[feedback_key] = True
+                st.rerun()
+            else:
+                st.warning("選択肢を選んでください。")
+        else:
+            time.sleep(1)
+            st.rerun()
+
+# === 結果ページ ===
+elif st.session_state.page == "result":
     st.title("📊 結果発表")
     score = 0
-    labels = ['a', 'b', 'c', 'd', 'e']
+    labels = ["a", "b", "c", "d", "e"]
     for i, q in st.session_state.questions.iterrows():
-        user = st.session_state.answers[i]
-        correct = str(q["answer"]).lower().strip()
-        correct_bool = user == correct
+        your = st.session_state.answers[i]
+        answer = str(q["answer"]).lower().strip()
+        correct = (your == answer)
         choices = [q.get(f"choice{j+1}", "") for j in range(5)]
-        user_txt = choices[labels.index(user)] if user in labels else "未回答"
-        correct_txt = choices[labels.index(correct)] if correct in labels else "不明"
+        your_txt = choices[labels.index(your)] if your in labels else "未回答"
+        correct_txt = choices[labels.index(answer)] if answer in labels else "不明"
 
-        st.markdown(f"**Q{i+1}: {q['question']}** {'✅' if correct_bool else '❌'}")
-        st.markdown(f"あなたの回答：{user.upper() if user else '未回答'} - {user_txt}")
-        st.markdown(f"正解：{correct.upper()} - {correct_txt}")
+        st.markdown(f"**Q{i+1}: {q['question']}** {'✅' if correct else '❌'}")
+        st.markdown(f"あなたの回答：{your.upper() if your else '未回答'} - {your_txt}")
+        st.markdown(f"正解：{answer.upper()} - {correct_txt}")
         if q.get("explanation"):
-            st.markdown(f"📘 解説：{
+            st.markdown(f"📘 解説：{q['explanation']}")
+        st.markdown("---")
+        if correct:
+            score += 1
+
+    st.success(f"🎯 最終スコア：{score} / 20")
+    if st.button("もう一度挑戦"):
+        for k in list(st.session_state.keys()):
+            if k != "authenticated":
+                del st.session_state[k]
+        st.rerun()
+
