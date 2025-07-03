@@ -182,7 +182,7 @@ if st.session_state.page == "result":
             score += 1
 
     st.success(f"🎯 最終スコア：{score} / {st.session_state.num_questions}")
-    　　　　if st.button("もう一度解く"):
+    if st.button("もう一度解く"):
     for k in list(st.session_state.keys()):
         if k not in ["authenticated"]:
             del st.session_state[k]
