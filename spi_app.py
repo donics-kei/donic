@@ -5,7 +5,6 @@ import os
 
 st.set_page_config(page_title="SPI言語20問", layout="centered")
 
-# フォント設定（任意）
 st.markdown("""
 <style>
 html, body, [class*="css"] {
@@ -14,7 +13,6 @@ html, body, [class*="css"] {
 </style>
 """, unsafe_allow_html=True)
 
-# ロゴ（あれば表示）
 if os.path.exists("nics_logo.png"):
     st.image("nics_logo.png", width=260)
 
@@ -31,7 +29,6 @@ def load_questions():
     df = df[df["question"] != ""]
     return df
 
-# === ログイン管理 ===
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
@@ -47,15 +44,13 @@ if not st.session_state.authenticated:
             st.error("ユーザーIDまたはパスワードが違います。")
     st.stop()
 
-# === ページ管理 ===
 if "page" not in st.session_state:
     st.session_state.page = "start"
 
-# === スタートページ ===
+# === スタート画面 ===
 if st.session_state.page == "start":
     st.title("SPI言語演習（20問ランダム）")
     st.markdown("- 制限時間あり\n- 回答後に解説表示\n- スコア付き")
-
     if st.button("演習スタート"):
         df = load_questions()
         filtered = df[df["category"].str.strip() == "言語"]
@@ -70,7 +65,7 @@ if st.session_state.page == "start":
         st.session_state.page = "quiz"
         st.rerun()
 
-# === 出題・解説ページ ===
+# === 出題／解説画面 ===
 elif st.session_state.page == "quiz":
     idx = st.session_state.q_index
     if idx >= 20:
@@ -105,6 +100,7 @@ elif st.session_state.page == "quiz":
                 st.session_state.pop(k, None)
             st.session_state.q_index += 1
             st.rerun()
+        return
 
     # === 出題フェーズ ===
     else:
@@ -126,17 +122,22 @@ elif st.session_state.page == "quiz":
             st.session_state.answers[idx] = None
             st.session_state[feedback_key] = True
             st.rerun()
+            return
+
         elif st.button("回答する"):
-            if picked:
+            if picked and picked in choice_map:
                 sel = choice_map[picked]
                 st.session_state.answers[idx] = sel
                 st.session_state[feedback_key] = True
                 st.rerun()
+                return
             else:
                 st.warning("選択肢を選んでください。")
+                return
         else:
             time.sleep(1)
             st.rerun()
+            return
 
 # === 結果ページ ===
 elif st.session_state.page == "result":
@@ -160,7 +161,7 @@ elif st.session_state.page == "result":
         if correct:
             score += 1
 
-    st.success(f"🎯 最終スコア：{score} / 20")
+    st.success(f"🎯 最終スコア：{score}/20")
     if st.button("もう一度挑戦"):
         for k in list(st.session_state.keys()):
             if k != "authenticated":
