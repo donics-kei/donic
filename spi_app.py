@@ -15,7 +15,7 @@ def load_questions():
     df = df[df["question"] != ""]
     return df
 
-# 初期化
+# セッション初期化
 defaults = {
     "page": "select",
     "q_index": 0,
@@ -34,40 +34,48 @@ if st.session_state.page != "select" and "questions" not in st.session_state:
         cat = st.session_state.get("category", "言語")
         num = st.session_state.get("num_questions", 20)
         st.session_state.questions = df[df["category"] == cat].sample(n=num).reset_index(drop=True)
-        st.warning("⚠️ セッション切れのため問題を復元しました。")
+        st.warning("⚠️ セッションが切れたため、問題を復元しました。")
     except:
         st.session_state.page = "select"
         st.rerun()
         st.stop()
 
 def render_quiz(q, idx, choices, labeled, labels):
+    if st.session_state.stage != "quiz":
+        return
+
     picked = st.radio("選択肢を選んでください：", labeled, key=f"q{idx}", index=None)
+
     if st.session_state.start_times[idx] is None:
         st.session_state.start_times[idx] = time.time()
+
     remaining = max(0, int(DEFAULT_TIME_LIMIT - (time.time() - st.session_state.start_times[idx])))
     st.info(f"⏳ 残り時間：{remaining} 秒")
 
     if remaining <= 0:
-        st.error("⌛ 時間切れ")
+        st.error("⌛ 時間切れ！")
         st.session_state.answers[idx] = None
         st.session_state.stage = "explanation"
         st.rerun()
-        st.stop()
+        return
 
     if st.button("回答する"):
         if picked:
             st.session_state.answers[idx] = labels[labeled.index(picked)]
             st.session_state.stage = "explanation"
             st.rerun()
-            st.stop()
+            return
         else:
             st.warning("選択肢を選んでください。")
     else:
         time.sleep(1)
         st.rerun()
-        st.stop()
+        return
 
 def render_explanation(q, idx, choices, labels):
+    if st.session_state.stage != "explanation":
+        return
+
     user = st.session_state.answers[idx]
     correct = str(q["answer"]).lower().strip()
     ci = labels.index(correct) if correct in labels else -1
@@ -93,7 +101,7 @@ def render_explanation(q, idx, choices, labels):
         if del_key in st.session_state:
             del st.session_state[del_key]
         st.rerun()
-        st.stop()
+        return
 
 def render_current_stage():
     idx = st.session_state.q_index
@@ -102,25 +110,25 @@ def render_current_stage():
     choices = [q.get(f"choice{i+1}", "") for i in range(5)]
     labeled = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    question_text = str(q.get("question", "")).strip()
-    if question_text:
-        st.subheader(question_text)
+    text = str(q.get("question", "")).strip()
+    if text:
+        st.subheader(text)
     else:
-        st.error("❗ 問題文が空欄です。")
+        st.error("❗ この問題は空欄です")
         st.json(q.to_dict())
-        st.stop()
+        return
 
     if st.session_state.stage == "quiz":
         render_quiz(q, idx, choices, labeled, labels)
-        st.stop()
+        return
     elif st.session_state.stage == "explanation":
         render_explanation(q, idx, choices, labels)
-        st.stop()
+        return
     else:
-        st.warning("❗ ステージ不明。select に戻ります")
+        st.warning("ステージ異常。selectに戻します")
         st.session_state.page = "select"
         st.rerun()
-        st.stop()
+        return
 
 if st.session_state.page == "select":
     st.title("SPI模擬試験")
@@ -141,16 +149,17 @@ if st.session_state.page == "select":
         st.session_state.stage = "quiz"
         st.session_state.page = "quiz"
         st.rerun()
-        st.stop()
+        return
     st.stop()
 
 if st.session_state.page == "quiz":
     if st.session_state.q_index >= st.session_state.num_questions:
         st.session_state.page = "result"
         st.rerun()
-        st.stop()
+        return
     st.title(f"Q{st.session_state.q_index + 1}/{st.session_state.num_questions}")
     render_current_stage()
+    return
 
 if st.session_state.page == "result":
     st.title("📊 結果発表")
@@ -179,5 +188,4 @@ if st.session_state.page == "result":
             if k not in ["authenticated"]:
                 del st.session_state[k]
         st.rerun()
-        st.stop()
 
