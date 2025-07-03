@@ -10,51 +10,47 @@ def load_questions():
     base_dir = os.path.dirname(__file__)
     csv_path = os.path.join(base_dir, "spi_questions_converted.csv")
     df = pd.read_csv(csv_path)
-    df.columns = df.columns.str.strip().str.lower()                       # 列名クリーニング
+    df.columns = df.columns.str.strip().str.lower()
     df["question"] = df["question"].astype(str).str.strip()
     df = df[df["question"] != ""]
     return df
 
-# === セッション初期化 ===
-defaults = {
+# 初期化
+for k, v in {
     "page": "select",
     "q_index": 0,
     "stage": "quiz",
     "answers": [],
     "start_times": [],
-}
-for k, v in defaults.items():
+}.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# === セッション復旧 ===
+# セッション復元（questionsが消えたとき）
 if st.session_state.page != "select" and "questions" not in st.session_state:
     try:
         df = load_questions()
         cat = st.session_state.get("category", "言語")
         num = st.session_state.get("num_questions", 20)
-        filtered = df[df["category"] == cat]
-        st.session_state.questions = filtered.sample(n=num).reset_index(drop=True)
-        st.warning("⚠️ セッションが切れたため、問題を復元しました。")
+        st.session_state.questions = df[df["category"] == cat].sample(n=num).reset_index(drop=True)
+        st.warning("⚠️ セッション切れのため問題を復元しました。")
     except:
         st.session_state.page = "select"
         st.rerun()
         st.stop()
 
-# === 出題表示 ===
+# クイズ描画
 def render_quiz(q, idx, choices, labeled, labels):
-    key = f"q{idx}"
-    picked = st.radio("選択肢を選んでください：", labeled, key=key, index=None)
+    picked = st.radio("選択肢を選んでください：", labeled, key=f"q{idx}", index=None)
 
     if st.session_state.start_times[idx] is None:
         st.session_state.start_times[idx] = time.time()
 
-    elapsed = time.time() - st.session_state.start_times[idx]
-    remaining = max(0, int(DEFAULT_TIME_LIMIT - elapsed))
+    remaining = max(0, int(DEFAULT_TIME_LIMIT - (time.time() - st.session_state.start_times[idx])))
     st.info(f"⏳ 残り時間：{remaining} 秒")
 
     if remaining <= 0:
-        st.error("⌛ 時間切れ！")
+        st.error("⌛ 時間切れ")
         st.session_state.answers[idx] = None
         st.session_state.stage = "explanation"
         st.rerun()
@@ -73,7 +69,7 @@ def render_quiz(q, idx, choices, labeled, labels):
         st.rerun()
         st.stop()
 
-# === 解説表示 ===
+# 解説描画
 def render_explanation(q, idx, choices, labels):
     user = st.session_state.answers[idx]
     correct = str(q["answer"]).lower().strip()
@@ -102,7 +98,7 @@ def render_explanation(q, idx, choices, labels):
         st.rerun()
         st.stop()
 
-# === ステージ描画 ===
+# 描画切替
 def render_current_stage():
     idx = st.session_state.q_index
     q = st.session_state.questions.iloc[idx]
@@ -110,11 +106,11 @@ def render_current_stage():
     choices = [q.get(f"choice{i+1}", "") for i in range(5)]
     labeled = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
-    question_text = str(q.get("question", "")).strip()
-    if question_text:
-        st.subheader(question_text)
+    text = str(q.get("question", "")).strip()
+    if text:
+        st.subheader(text)
     else:
-        st.error("❗ 問題文が空欄です。この問題行に不具合があります")
+        st.error("❗ この問題は空欄です。")
         st.json(q.to_dict())
         st.stop()
 
@@ -122,25 +118,20 @@ def render_current_stage():
         render_quiz(q, idx, choices, labeled, labels)
     elif st.session_state.stage == "explanation":
         render_explanation(q, idx, choices, labels)
-    else:
-        st.warning("ステージが不正です。selectに戻ります。")
-        st.session_state.page = "select"
-        st.rerun()
-        st.stop()
 
-# === 選択画面 ===
+# 選択画面
 if st.session_state.page == "select":
-    st.title("SPI試験対策")
-    st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
-    st.session_state.temp_num_questions = st.number_input("出題数（最大50問）", 1, 50, value=20)
-    st.session_state.temp_mode = st.radio("採点方法を選んでください：", ["最後にまとめて採点", "その都度採点"])
+    st.title("SPI模擬試験")
+    st.session_state.temp_category = st.radio("出題カテゴリー：", ["言語", "非言語"])
+    st.session_state.temp_num_questions = st.number_input("出題数（1〜50）", 1, 50, value=20)
+    st.session_state.temp_mode = st.radio("採点方法：", ["その都度採点", "最後にまとめて採点"])
     if st.button("開始"):
+        df = load_questions()
         st.session_state.category = st.session_state.temp_category
         st.session_state.num_questions = st.session_state.temp_num_questions
         st.session_state.mode = st.session_state.temp_mode
-        df = load_questions()
-        filtered = df[df["category"] == st.session_state.category]
-        st.session_state.questions = filtered.sample(n=st.session_state.num_questions).reset_index(drop=True)
+        st.session_state.questions = df[df["category"] == st.session_state.category].sample(
+            n=st.session_state.num_questions).reset_index(drop=True)
         st.session_state.answers = [None] * st.session_state.num_questions
         st.session_state.start_times = [None] * st.session_state.num_questions
         st.session_state.q_index = 0
@@ -150,16 +141,16 @@ if st.session_state.page == "select":
         st.stop()
     st.stop()
 
-# === 出題画面 ===
+# 出題画面
 if st.session_state.page == "quiz":
     if st.session_state.q_index >= st.session_state.num_questions:
         st.session_state.page = "result"
         st.rerun()
         st.stop()
-    st.title(f"SPI模擬試験 Q{st.session_state.q_index+1}/{st.session_state.num_questions}")
+    st.title(f"Q{st.session_state.q_index + 1}/{st.session_state.num_questions}")
     render_current_stage()
 
-# === 結果画面 ===
+# 結果画面
 if st.session_state.page == "result":
     st.title("📊 結果発表")
     score = 0
@@ -181,12 +172,11 @@ if st.session_state.page == "result":
         if correct_bool:
             score += 1
 
-    st.success(f"🎯 最終スコア：{score} / {st.session_state.num_questions}")
+    st.success(f"🎯 スコア：{score} / {st.session_state.num_questions}")
     if st.button("もう一度解く"):
-    for k in list(st.session_state.keys()):
-        if k not in ["authenticated"]:
-            del st.session_state[k]
-    st.rerun()
-    st.stop()
-
+        for k in list(st.session_state.keys()):
+            if k not in ["authenticated"]:
+                del st.session_state[k]
+        st.rerun()
+        st.stop()
 
