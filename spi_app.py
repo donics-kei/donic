@@ -10,21 +10,23 @@ def load_questions():
     base_dir = os.path.dirname(__file__)
     csv_path = os.path.join(base_dir, "spi_questions_converted.csv")
     df = pd.read_csv(csv_path)
-    df = df.dropna(subset=["question"])  # ❗ 空白問題を除去
+    df = df.dropna(subset=["question"])
+    df = df[df["question"].astype(str).str.strip() != ""]  # 空白文字列も除外
     return df
 
 # === セッション初期化 ===
-for k, v in {
+defaults = {
     "page": "select",
     "q_index": 0,
     "stage": "quiz",
     "answers": [],
     "start_times": [],
-}.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+}
+for key, val in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 
-# === セッション復旧 ===
+# === セッション復元 ===
 if st.session_state.page != "select" and "questions" not in st.session_state:
     try:
         df = load_questions()
@@ -38,7 +40,7 @@ if st.session_state.page != "select" and "questions" not in st.session_state:
         st.rerun()
         st.stop()
 
-# === UI関数 ===
+# === 出題フェーズ ===
 def render_quiz(q, idx, choices, labeled, labels):
     key = f"q{idx}"
     picked = st.radio("選択肢を選んでください：", labeled, key=key, index=None)
@@ -70,6 +72,7 @@ def render_quiz(q, idx, choices, labeled, labels):
         st.rerun()
         st.stop()
 
+# === 解説フェーズ ===
 def render_explanation(q, idx, choices, labels):
     user = st.session_state.answers[idx]
     correct = str(q['answer']).lower().strip()
@@ -92,25 +95,38 @@ def render_explanation(q, idx, choices, labels):
     if st.button("次の問題へ"):
         st.session_state.q_index += 1
         st.session_state.stage = "quiz"
-        del_key = f"q{idx}"
-        if del_key in st.session_state:
-            del st.session_state[del_key]
+        qkey = f"q{idx}"
+        if qkey in st.session_state:
+            del st.session_state[qkey]
         st.rerun()
         st.stop()
 
-def render_stage():
+# === ステージ描画コントローラ ===
+def render_current_stage():
     idx = st.session_state.q_index
     q = st.session_state.questions.iloc[idx]
     labels = ['a', 'b', 'c', 'd', 'e']
     choices = [q.get(f"choice{i+1}", "") for i in range(5)]
     labeled = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
+    question_text = str(q.get("question", "")).strip()
+    if question_text:
+        st.subheader(question_text)
+    else:
+        st.error("⚠️ この問題は空欄のようです。CSVをご確認ください。")
+        st.stop()
+
     if st.session_state.stage == "quiz":
         render_quiz(q, idx, choices, labeled, labels)
     elif st.session_state.stage == "explanation":
         render_explanation(q, idx, choices, labels)
+    else:
+        st.warning("⚠️ ステージエラー。最初に戻ります。")
+        st.session_state.page = "select"
+        st.rerun()
+        st.stop()
 
-# === 選択ページ ===
+# === 選択画面 ===
 if st.session_state.page == "select":
     st.title("SPI試験対策")
     st.session_state.temp_category = st.radio("出題カテゴリーを選んでください：", ["言語", "非言語"])
@@ -132,16 +148,16 @@ if st.session_state.page == "select":
         st.stop()
     st.stop()
 
-# === クイズページ ===
+# === クイズ画面 ===
 if st.session_state.page == "quiz":
     if st.session_state.q_index >= st.session_state.num_questions:
         st.session_state.page = "result"
         st.rerun()
         st.stop()
     st.title(f"SPI模擬試験 Q{st.session_state.q_index+1}/{st.session_state.num_questions}")
-    render_stage()
+    render_current_stage()
 
-# === 結果ページ ===
+# === 結果画面 ===
 if st.session_state.page == "result":
     st.title("📊 結果発表")
     score = 0
@@ -167,6 +183,5 @@ if st.session_state.page == "result":
     if st.button("もう一度解く"):
         for k in list(st.session_state.keys()):
             if k not in ["authenticated"]:
-                del st.session_state[k]
-        st.rerun()
-        st.stop()
+                del
+
