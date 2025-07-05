@@ -18,10 +18,7 @@ def load_questions():
     df["time_limit"] = df.get("time_limit", 60)
     return df
 
-# ログイン
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if not st.session_state.authenticated:
+def login_screen():
     st.title("ログイン")
     user = st.text_input("ユーザーID")
     pw = st.text_input("パスワード", type="password")
@@ -31,13 +28,8 @@ if not st.session_state.authenticated:
             st.rerun()
         else:
             st.error("ユーザーIDまたはパスワードが違います")
-    st.stop()
 
-# 初期化
-if "page" not in st.session_state:
-    st.session_state.page = "start"
-
-if st.session_state.page == "start":
+def start_screen():
     st.title("SPI言語演習（20問ランダム）")
     if st.button("演習スタート"):
         df = load_questions()
@@ -53,11 +45,12 @@ if st.session_state.page == "start":
         st.session_state.page = "quiz"
         st.rerun()
 
-elif st.session_state.page == "quiz":
+def render_quiz_screen():
     idx = st.session_state.q_index
     if idx >= 20:
         st.session_state.page = "result"
         st.rerun()
+        return
 
     q = st.session_state.questions.iloc[idx]
     labels = ['a', 'b', 'c', 'd', 'e']
@@ -85,10 +78,8 @@ elif st.session_state.page == "quiz":
             st.session_state.q_index += 1
             st.session_state.phase = "question"
             st.rerun()
-            return
-        return  # 🔒 ここで終了、下へ流れない！
-    
-    # 出題フェーズのみ以下を描画
+        return
+
     key = f"picked"
     picked = st.radio("選択肢を選んでください：", list(choice_map.keys()), index=None, key=key)
 
@@ -112,16 +103,14 @@ elif st.session_state.page == "quiz":
             st.session_state.answers[idx] = choice_map[picked]
             st.session_state.phase = "feedback"
             st.rerun()
-            return
         else:
-            st.warning("選択肢を選んでください。")
-            return
+            st.warning("選択肢を選んでください")
+        return
 
     time.sleep(1)
     st.rerun()
-    return
 
-elif st.session_state.page == "result":
+def render_result_screen():
     st.title("📊 結果発表")
     score = 0
     labels = ['a', 'b', 'c', 'd', 'e']
@@ -146,4 +135,20 @@ elif st.session_state.page == "result":
             if k != "authenticated":
                 del st.session_state[k]
         st.rerun()
+
+# ==== 実行フロー ====
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    login_screen()
+elif "page" not in st.session_state:
+    st.session_state.page = "start"
+    start_screen()
+elif st.session_state.page == "start":
+    start_screen()
+elif st.session_state.page == "quiz":
+    render_quiz_screen()
+elif st.session_state.page == "result":
+    render_result_screen()
 
