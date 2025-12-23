@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 # =========================
 DEFAULT_TIME_LIMIT = 60  # 1問あたり秒数（開始画面で変更可）
 CSV_FILENAME = "spi_questions_converted.csv"
-IMAGES_DIRNAME = "images"  # 同梱画像フォルダ名
+IMAGES_DIRNAME = "image"  # 同梱画像フォルダ名
 
 # =========================
 # データ読込
@@ -384,3 +384,4 @@ if st.session_state.page == "result":
                 del st.session_state[k]
         st.rerun()
         st.stop()
+
