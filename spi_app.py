@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 # =========================
 DEFAULT_TIME_LIMIT = 60
 CSV_FILENAME = "spi_questions_converted.csv"
-IMAGES_DIRNAME = "images"  # app.py と同じ階層に置く
+IMAGES_DIRNAME = "images"  # app.py と同じ階層に置く（ローカル画像用）
 
 
 # =========================
@@ -48,7 +48,7 @@ def auto_math_to_latex(text: str) -> str:
     ✅ 分数： 1/2  ->  $\\frac{1}{2}$ （縦分数）
     ✅ ルート： √2, √(a+b), ルート3, sqrt(5) -> $\\sqrt{...}$
 
-    ※ すでに $...$ や \\frac/\\sqrt が含まれている場合は基本そのまま（安全側）
+    ※ すでに $...$ や \\frac/\\sqrt が含まれている場合はそのまま（安全側）
     """
     if not text:
         return ""
@@ -79,7 +79,7 @@ def auto_math_to_latex(text: str) -> str:
     # 1/2 -> $\frac{1}{2}$（数字/数字のみ対象）
     s = re.sub(
         r'(?<!\d)(\d+)\s*/\s*(\d+)(?!\d)',
-        lambda m: f'$\\\\frac{{{m.group(1)}}}{{{m.group(2)}}}$',
+        lambda m: f'$\\frac{{{m.group(1)}}}{{{m.group(2)}}}$',
         s
     )
 
@@ -109,7 +109,7 @@ def render_question_image(q):
 
 
 def render_choices_markdown(choices):
-    """選択肢を Markdown（LaTeX可）で表示"""
+    """選択肢を Markdown（LaTeX可）で表示（radioに数式を入れないため崩れない）"""
     labels_upper = ["A", "B", "C", "D", "E"]
     for i in range(5):
         c = auto_math_to_latex(safe_str(choices[i]))
@@ -136,6 +136,7 @@ def load_questions():
     df["question"] = df["question"].astype(str).str.strip()
     df = df[df["question"] != ""]
 
+    # 任意列（なければ作る）
     if "image" not in df.columns:
         df["image"] = ""
     if "image_url" not in df.columns:
@@ -209,6 +210,7 @@ def render_quiz(q, idx, choices):
     render_question_image(q)
     render_choices_markdown(choices)
 
+    # 回答選択（A-Eのみ）
     map_upper_to_lower = {"A": "a", "B": "b", "C": "c", "D": "d", "E": "e"}
     picked_upper = st.radio(
         "回答を選んでください：",
@@ -263,7 +265,7 @@ def render_quiz(q, idx, choices):
             st.warning("A〜Eのいずれかを選んでください。")
             st.stop()
 
-    # 1秒ごと更新（同時接続が多いなら後で軽量化推奨）
+    # 1秒ごと更新（同時接続が多い運用なら、後で軽量化版にするのがオススメ）
     time.sleep(1)
     st.rerun()
     st.stop()
@@ -332,7 +334,7 @@ def render_current_stage():
 # 画面：開始
 # =========================
 if st.session_state.page == "select":
-    st.title("SPI模擬試験（画像＋縦分数＋ルート対応）")
+    st.title("NICS-SPI模擬試験")
 
     try:
         df = load_questions()
@@ -351,7 +353,7 @@ if st.session_state.page == "select":
     st.session_state.temp_time_limit = st.number_input("制限時間（1問あたり秒）", 5, 600, value=DEFAULT_TIME_LIMIT)
 
     st.caption(
-        "【分数】CSVに 1/2 と書けば縦分数で表示します。\n"
+        "【分数】CSVに 1/2 と書けば縦分数で表示します（$\\frac{1}{2}$）。\n"
         "【ルート】CSVに √2 / √(a+b) / ルート3 / sqrt(5) と書けばルート表示します。\n"
         f"【画像】CSVに image（例 q001.png）を入れて {IMAGES_DIRNAME}/ に配置。URLなら image_url 列。"
     )
