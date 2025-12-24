@@ -10,20 +10,22 @@ from urllib.parse import urlparse
 # =========================
 DEFAULT_TIME_LIMIT = 60
 CSV_FILENAME = "spi_questions_converted.csv"
-IMAGES_DIRNAME = "images"  # app.pyと同階層に置く（ローカル画像用）
+IMAGES_DIRNAME = "images"  # app.py と同階層（ローカル画像用）
 
 
 # =========================
 # ユーティリティ
 # =========================
 def safe_str(x) -> str:
-    """None/NaN対策 + 前後空白除去"""
+    """None/NaN対策 + 前後空白除去 + ダブルクォート除去（表示で " が残らないように）"""
     if x is None:
         return ""
-    s = str(x)
+    s = str(x).strip()
     if s.lower() in ("nan", "none"):
         return ""
-    return s.strip()
+    # ★ CSVに "1/3" のように入っていても画面表示では " を消す
+    s = s.replace('"', "")
+    return s
 
 
 def is_http_url(s: str) -> bool:
@@ -42,15 +44,14 @@ def normalize_answer_letter(x: str) -> str:
 
 def auto_math_to_latex(text: str) -> str:
     """
-    文字列中の表記を「表示用」に変換して返す。
-    - 分数： 1/2 -> $\\frac{1}{2}$（縦分数）
-    - ルート： √2, √(a+b), ルート3, sqrt(5) -> $\\sqrt{...}$
-    ※CSVに "1/3" と入れていれば、pandasが数値化しない限り 0.333... にはなりません
+    表示用の自動変換：
+      1/2 -> $\\frac{1}{2}$（縦分数）
+      √2, √(a+b), ルート3, sqrt(5) -> $\\sqrt{...}$
     """
     if not text:
         return ""
 
-    s = str(text)
+    s = safe_str(text)
 
     # すでに数式/LaTeXなら触らない（安全側）
     if "$" in s or "\\frac" in s or "\\sqrt" in s:
@@ -64,7 +65,7 @@ def auto_math_to_latex(text: str) -> str:
     s = re.sub(r'√\s*([0-9A-Za-z]+)', r'$\\sqrt{\1}$', s)
 
     # --- 分数変換（最後） ---
-    # 数字/数字 のときだけ縦分数へ（誤変換を避ける）
+    # 数字/数字 のみ縦分数へ（誤変換を避ける）
     s = re.sub(
         r'(?<!\d)(\d+)\s*/\s*(\d+)(?!\d)',
         lambda m: f'$\\frac{{{m.group(1)}}}{{{m.group(2)}}}$',
@@ -108,7 +109,7 @@ def load_questions() -> pd.DataFrame:
     base_dir = os.path.dirname(__file__)
     csv_path = os.path.join(base_dir, CSV_FILENAME)
 
-    # ★ここが核心：全列を文字列で読み、"1/3"が0.333...にならないようにする
+    # ★ここが核心：全列を文字列で読み、"1/3" が 0.333... に化けないようにする
     df = pd.read_csv(
         csv_path,
         dtype=str,
@@ -130,7 +131,7 @@ def load_questions() -> pd.DataFrame:
         if c not in df.columns:
             df[c] = ""
 
-    # 前後空白除去
+    # 前後空白除去（表示時にもsafe_strで処理するが、ここでも軽く整える）
     for c in required + ["image", "image_url", "explanation"]:
         df[c] = df[c].astype(str).str.strip()
 
@@ -234,14 +235,20 @@ def render_explanation():
     # 正解表示
     if correct in labels:
         ci = labels.index(correct)
-        st.markdown(f"**正解：{labels_upper[ci]}**  {auto_math_to_latex(safe_str(q.get(f'choice{ci+1}','')))}")
+        st.markdown(
+            f"**正解：{labels_upper[ci]}**  "
+            f"{auto_math_to_latex(safe_str(q.get(f'choice{ci+1}','')))}"
+        )
     else:
         st.markdown("**正解：不明（CSVの answer を確認してください）**")
 
     # 自分の回答表示
     if user in labels:
         ui = labels.index(user)
-        st.markdown(f"あなたの回答：**{labels_upper[ui]}**  {auto_math_to_latex(safe_str(q.get(f'choice{ui+1}','')))}")
+        st.markdown(
+            f"あなたの回答：**{labels_upper[ui]}**  "
+            f"{auto_math_to_latex(safe_str(q.get(f'choice{ui+1}','')))}"
+        )
     else:
         st.markdown("あなたの回答：**未回答**")
 
@@ -275,13 +282,19 @@ def render_result():
 
         if user in labels:
             ui = labels.index(user)
-            st.markdown(f"- あなたの回答：**{labels_upper[ui]}**  {auto_math_to_latex(safe_str(q.get(f'choice{ui+1}','')))}")
+            st.markdown(
+                f"- あなたの回答：**{labels_upper[ui]}**  "
+                f"{auto_math_to_latex(safe_str(q.get(f'choice{ui+1}','')))}"
+            )
         else:
             st.markdown("- あなたの回答：**未回答**")
 
         if correct in labels:
             ci = labels.index(correct)
-            st.markdown(f"- 正解：**{labels_upper[ci]}**  {auto_math_to_latex(safe_str(q.get(f'choice{ci+1}','')))}")
+            st.markdown(
+                f"- 正解：**{labels_upper[ci]}**  "
+                f"{auto_math_to_latex(safe_str(q.get(f'choice{ci+1}','')))}"
+            )
         else:
             st.markdown("- 正解：**不明**（CSVの answer を確認）")
 
@@ -290,7 +303,6 @@ def render_result():
             st.markdown(f"📘 解説：{exp}")
 
         st.markdown("---")
-
         if ok:
             score += 1
 
@@ -321,7 +333,9 @@ if st.session_state.page == "select":
     st.session_state.temp_time_limit = st.number_input("制限時間（1問あたり秒）", 5, 600, value=DEFAULT_TIME_LIMIT)
 
     st.caption(
-        "【重要】CSVはdtype=strで読み込み、\"1/3\" が 0.333... に化けないようにしています。"
+        "【分数】CSVに 1/3（または \"1/3\"）と入れてOK。画面表示では \" は除去し、縦分数にします。\n"
+        "【ルート】√2 / √(a+b) / ルート3 / sqrt(5) もOK。\n"
+        f"【画像】image列なら {IMAGES_DIRNAME}/ に置く。URLなら image_url 列。"
     )
 
     if st.button("開始"):
