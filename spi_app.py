@@ -2,58 +2,20 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+import re
 from urllib.parse import urlparse
 
 # =========================
 # 設定
 # =========================
-DEFAULT_TIME_LIMIT = 60  # 1問あたり秒数（開始画面で変更可）
+DEFAULT_TIME_LIMIT = 60
 CSV_FILENAME = "spi_questions_converted.csv"
-IMAGES_DIRNAME = "image"  # 同梱画像フォルダ名
+IMAGES_DIRNAME = "images"  # 同梱画像フォルダ名（app.pyと同階層に置く）
+
 
 # =========================
-# データ読込
+# ユーティリティ
 # =========================
-@st.cache_data
-def load_questions():
-    base_dir = os.path.dirname(__file__)
-    csv_path = os.path.join(base_dir, CSV_FILENAME)
-    df = pd.read_csv(csv_path)
-
-    # 列名を扱いやすく
-    df.columns = df.columns.str.strip().str.lower()
-
-    # 必須列チェック（最低限）
-    required = ["category", "question", "answer", "choice1", "choice2", "choice3", "choice4", "choice5"]
-    missing = [c for c in required if c not in df.columns]
-    if missing:
-        raise ValueError(f"CSVに必須列がありません: {missing}")
-
-    # questionの空欄除去
-    df["question"] = df["question"].astype(str).str.strip()
-    df = df[df["question"] != ""]
-
-    # 画像列（任意）
-    # image: images/ 配下のファイル名（例 q001.png）
-    # image_url: http(s):// の画像URL
-    if "image" not in df.columns:
-        df["image"] = ""
-    if "image_url" not in df.columns:
-        df["image_url"] = ""
-
-    # explanation（任意）
-    if "explanation" not in df.columns:
-        df["explanation"] = ""
-
-    # categoryを念のため文字列化
-    df["category"] = df["category"].astype(str).str.strip()
-
-    # answerを正規化
-    df["answer"] = df["answer"].astype(str).str.strip().str.lower()
-
-    return df
-
-
 def safe_str(x):
     if x is None:
         return ""
@@ -71,12 +33,66 @@ def is_http_url(s: str) -> bool:
         return False
 
 
+def normalize_answer_letter(x: str) -> str:
+    """CSVの answer を a-e / A-E どちらでも受け取れるように統一"""
+    s = safe_str(x).lower()
+    if s in ["a", "b", "c", "d", "e"]:
+        return s
+    return s  # 想定外はそのまま
+
+
+def auto_math_to_latex(text: str) -> str:
+    """
+    CSVに普通に書いた表記を、表示用に LaTeX へ自動変換。
+    - 1/2      -> \frac{1}{2} （縦分数）
+    - √2       -> \sqrt{2}
+    - √(a+b)   -> \sqrt{a+b}
+    - ルート3  -> \sqrt{3}
+    - sqrt(5)  -> \sqrt{5}
+
+    すでに \frac や \sqrt が含まれている場合は基本そのまま（安全側）
+    """
+    if not text:
+        return ""
+
+    # すでにLaTeX分数/ルートを書いている場合は触らない（安全側）
+    if "\\frac" in text or "\\sqrt" in text:
+        return text
+
+    s = text
+
+    # --- ルート変換 ---
+    # sqrt( ... ) -> \sqrt{ ... }
+    s = re.sub(r'\bsqrt\s*\(\s*([^)]+?)\s*\)', r'\\sqrt{\1}', s)
+
+    # ルート( ... ) -> \sqrt{ ... }
+    s = re.sub(r'ルート\s*\(\s*([^)]+?)\s*\)', r'\\sqrt{\1}', s)
+
+    # ルートX -> \sqrt{X} （Xは数字/英字）
+    s = re.sub(r'ルート\s*([0-9A-Za-z]+)', r'\\sqrt{\1}', s)
+
+    # √( ... ) -> \sqrt{ ... }
+    s = re.sub(r'√\s*\(\s*([^)]+?)\s*\)', r'\\sqrt{\1}', s)
+
+    # √X -> \sqrt{X} （Xは数字/英字）
+    s = re.sub(r'√\s*([0-9A-Za-z]+)', r'\\sqrt{\1}', s)
+
+    # --- 分数変換（最後に） ---
+    # 1/2 -> \frac{1}{2}  ※数字/数字のみ対象（誤変換防止）
+    s = re.sub(
+        r'(?<!\d)(\d+)\s*/\s*(\d+)(?!\d)',
+        lambda m: f'\\\\frac{{{m.group(1)}}}{{{m.group(2)}}}',
+        s
+    )
+
+    return s
+
+
 def render_question_image(q):
     """
     画像表示：
     1) image_url が http(s) のとき → それを表示
     2) image があるとき → images/<ファイル名> を表示
-    どちらも無いなら何もしない
     """
     image_url = safe_str(q.get("image_url", ""))
     image_name = safe_str(q.get("image", ""))
@@ -94,6 +110,51 @@ def render_question_image(q):
             st.image(img_path, use_container_width=True)
         else:
             st.warning(f"画像ファイルが見つかりません：{IMAGES_DIRNAME}/{image_name}")
+
+
+def render_choices_markdown(choices):
+    """選択肢をMarkdown(LaTeX可)で表示（分数・ルートも綺麗に出る）"""
+    labels_upper = ["A", "B", "C", "D", "E"]
+    for i in range(5):
+        c = auto_math_to_latex(safe_str(choices[i]))
+        st.markdown(f"**{labels_upper[i]}.** {c}")
+
+
+# =========================
+# データ読込
+# =========================
+@st.cache_data
+def load_questions():
+    base_dir = os.path.dirname(__file__)
+    csv_path = os.path.join(base_dir, CSV_FILENAME)
+    df = pd.read_csv(csv_path)
+
+    # 列名を扱いやすく
+    df.columns = df.columns.str.strip().str.lower()
+
+    # 必須列チェック
+    required = ["category", "question", "answer",
+                "choice1", "choice2", "choice3", "choice4", "choice5"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"CSVに必須列がありません: {missing}")
+
+    # questionの空欄除去
+    df["question"] = df["question"].astype(str).str.strip()
+    df = df[df["question"] != ""]
+
+    # 任意列（なければ作る）
+    if "image" not in df.columns:
+        df["image"] = ""
+    if "image_url" not in df.columns:
+        df["image_url"] = ""
+    if "explanation" not in df.columns:
+        df["explanation"] = ""
+
+    df["category"] = df["category"].astype(str).str.strip()
+    df["answer"] = df["answer"].astype(str).str.strip()
+
+    return df
 
 
 # =========================
@@ -125,6 +186,7 @@ if st.session_state.page != "select" and st.session_state.questions is None:
         cat = st.session_state.get("category", "非言語")
         num = int(st.session_state.get("num_questions", 20))
         pool = df[df["category"] == cat]
+
         if len(pool) < num:
             st.session_state.page = "select"
             st.error(f"カテゴリ「{cat}」の問題数が不足しています（必要{num}問 / 現在{len(pool)}問）")
@@ -141,32 +203,41 @@ if st.session_state.page != "select" and st.session_state.questions is None:
 
 
 # =========================
-# 画面：クイズ
+# クイズ画面（選択肢はMarkdown表示＋回答はA〜E）
 # =========================
-def render_quiz(q, idx, choices, labeled, labels):
-    # 問題文
-    question_text = safe_str(q.get("question", ""))
+def render_quiz(q, idx, choices):
+    # 問題文（Markdown＝分数/ルートOK）
+    question_text = auto_math_to_latex(safe_str(q.get("question", "")))
     if question_text:
-        st.subheader(question_text)
+        st.markdown(f"### {question_text}")
     else:
         st.error("❗ 問題文が空欄です。")
         st.json(q.to_dict())
         st.stop()
 
-    # 画像（あれば表示）
+    # 画像（あれば）
     render_question_image(q)
 
-    # 選択肢
-    picked = st.radio("選択肢を選んでください：", labeled, key=f"q{idx}", index=None)
+    # 選択肢（Markdown＝分数/ルートOK）
+    render_choices_markdown(choices)
 
-    # タイマー
+    # 回答はA〜Eだけ選択（radioに数式を入れない＝崩れない）
+    map_upper_to_lower = {"A": "a", "B": "b", "C": "c", "D": "d", "E": "e"}
+    picked_upper = st.radio(
+        "回答を選んでください：",
+        ["A", "B", "C", "D", "E"],
+        key=f"pick_{idx}",
+        index=None,
+        horizontal=True
+    )
+
+    # タイマー開始
     if st.session_state.start_times[idx] is None:
         st.session_state.start_times[idx] = time.time()
 
     time_limit = int(st.session_state.get("time_limit", DEFAULT_TIME_LIMIT))
     elapsed = time.time() - st.session_state.start_times[idx]
     remaining = max(0, int(time_limit - elapsed))
-
     st.info(f"⏳ 残り時間：{remaining} 秒（制限 {time_limit} 秒）")
 
     # 時間切れ
@@ -174,57 +245,57 @@ def render_quiz(q, idx, choices, labeled, labels):
         st.error("⌛ 時間切れ（未回答扱い）")
         st.session_state.answers[idx] = None
 
-        # その都度採点モードなら解説へ
         if st.session_state.mode == "その都度採点":
             st.session_state.stage = "explanation"
-            st.rerun()
-            st.stop()
         else:
-            # まとめ採点モードなら次へ
             st.session_state.q_index += 1
             st.session_state.stage = "quiz"
-            del_key = f"q{idx}"
+            # 次の問題で状態が残りにくいよう削除
+            del_key = f"pick_{idx}"
             if del_key in st.session_state:
                 del st.session_state[del_key]
-            st.rerun()
-            st.stop()
 
-    # 回答ボタン
+        st.rerun()
+        st.stop()
+
+    # 回答確定
     if st.button("回答する"):
-        if picked:
-            st.session_state.answers[idx] = labels[labeled.index(picked)]
+        if picked_upper:
+            st.session_state.answers[idx] = map_upper_to_lower[picked_upper]
 
             if st.session_state.mode == "その都度採点":
                 st.session_state.stage = "explanation"
             else:
-                # まとめ採点は即次へ
                 st.session_state.q_index += 1
                 st.session_state.stage = "quiz"
-                del_key = f"q{idx}"
+                del_key = f"pick_{idx}"
                 if del_key in st.session_state:
                     del st.session_state[del_key]
 
             st.rerun()
             st.stop()
         else:
-            st.warning("選択肢を選んでください。")
+            st.warning("A〜Eのいずれかを選んでください。")
             st.stop()
 
-    # 1秒ごとに更新（現行仕様を踏襲）
+    # 1秒ごと更新（現行仕様踏襲：同時接続が多い場合は後で軽量化推奨）
     time.sleep(1)
     st.rerun()
     st.stop()
 
 
-def render_explanation(q, idx, choices, labels):
-    user = st.session_state.answers[idx]
-    correct = safe_str(q.get("answer", "")).lower()
+def render_explanation(q, idx, choices):
+    user = st.session_state.answers[idx]  # a-e or None
+    correct = normalize_answer_letter(q.get("answer", ""))  # a-e想定
+
+    labels = ["a", "b", "c", "d", "e"]
+    labels_upper = ["A", "B", "C", "D", "E"]
 
     ci = labels.index(correct) if correct in labels else -1
-    correct_txt = choices[ci] if ci >= 0 else "不明"
-
     ui = labels.index(user) if user in labels else -1
-    user_txt = choices[ui] if ui >= 0 else "未回答"
+
+    correct_txt = auto_math_to_latex(safe_str(choices[ci])) if ci >= 0 else "不明"
+    user_txt = auto_math_to_latex(safe_str(choices[ui])) if ui >= 0 else "未回答"
 
     if user == correct:
         st.success("✅ 正解！")
@@ -233,17 +304,25 @@ def render_explanation(q, idx, choices, labels):
     else:
         st.error("❌ 不正解")
 
-    st.markdown(f"**正解：{correct.upper()} - {correct_txt}**")
-    st.markdown(f"あなたの回答：{user.upper() if user else '未回答'} - {user_txt}")
+    # 正解/自分の回答（本文はMarkdown＝分数/ルートOK）
+    if ci >= 0:
+        st.markdown(f"**正解：{labels_upper[ci]}**  {correct_txt}")
+    else:
+        st.markdown("**正解：不明（CSVの answer を確認してください）**")
 
-    exp = safe_str(q.get("explanation", ""))
+    if ui >= 0:
+        st.markdown(f"あなたの回答：**{labels_upper[ui]}**  {user_txt}")
+    else:
+        st.markdown("あなたの回答：**未回答**")
+
+    exp = auto_math_to_latex(safe_str(q.get("explanation", "")))
     if exp:
         st.info(f"📘 解説：{exp}")
 
     if st.button("次の問題へ"):
         st.session_state.q_index += 1
         st.session_state.stage = "quiz"
-        del_key = f"q{idx}"
+        del_key = f"pick_{idx}"
         if del_key in st.session_state:
             del st.session_state[del_key]
         st.rerun()
@@ -254,14 +333,12 @@ def render_current_stage():
     idx = st.session_state.q_index
     q = st.session_state.questions.iloc[idx]
 
-    labels = ['a', 'b', 'c', 'd', 'e']
     choices = [safe_str(q.get(f"choice{i+1}", "")) for i in range(5)]
-    labeled = [f"{l}. {c}" for l, c in zip(labels, choices)]
 
     if st.session_state.stage == "quiz":
-        render_quiz(q, idx, choices, labeled, labels)
+        render_quiz(q, idx, choices)
     elif st.session_state.stage == "explanation":
-        render_explanation(q, idx, choices, labels)
+        render_explanation(q, idx, choices)
     else:
         st.warning("❗ ステージ不明。select に戻ります")
         st.session_state.page = "select"
@@ -273,9 +350,8 @@ def render_current_stage():
 # 画面：開始
 # =========================
 if st.session_state.page == "select":
-    st.title("SPI模擬試験")
+    st.title("SPI模擬試験（画像＋分数＋ルート対応）")
 
-    df = None
     try:
         df = load_questions()
     except Exception as e:
@@ -288,14 +364,15 @@ if st.session_state.page == "select":
         st.stop()
 
     st.session_state.temp_category = st.radio("出題カテゴリー：", categories, index=0)
-
     st.session_state.temp_num_questions = st.number_input("出題数（1〜50）", 1, 50, value=20)
-
     st.session_state.temp_mode = st.radio("採点方法：", ["その都度採点", "最後にまとめて採点"])
-
     st.session_state.temp_time_limit = st.number_input("制限時間（1問あたり秒）", 5, 600, value=DEFAULT_TIME_LIMIT)
 
-    st.caption(f"画像を使う場合：CSVに image 列（例 q001.png）を追加し、{IMAGES_DIRNAME}/ に画像を入れてください。URLなら image_url 列。")
+    st.caption(
+        "【分数】CSVに 1/2 のように書けば縦分数で表示します。\n"
+        "【ルート】CSVに √2、√(a+b)、ルート3、sqrt(5) のように書けばルート表示します。\n"
+        f"【画像】CSVに image（例 q001.png）を入れて {IMAGES_DIRNAME}/ に配置。URLなら image_url 列。"
+    )
 
     if st.button("開始"):
         cat = st.session_state.temp_category
@@ -345,28 +422,33 @@ if st.session_state.page == "result":
     st.title("📊 結果発表")
 
     score = 0
-    labels = ['a', 'b', 'c', 'd', 'e']
+    labels = ["a", "b", "c", "d", "e"]
+    labels_upper = ["A", "B", "C", "D", "E"]
 
     for i, q in st.session_state.questions.iterrows():
         user = st.session_state.answers[i]
-        correct = safe_str(q.get("answer", "")).lower()
-        correct_bool = user == correct
+        correct = normalize_answer_letter(q.get("answer", ""))
+
+        correct_bool = (user == correct)
 
         st.markdown(f"### Q{i+1} {'✅' if correct_bool else '❌'}")
-        st.markdown(f"**{safe_str(q.get('question',''))}**")
+        st.markdown(f"**{auto_math_to_latex(safe_str(q.get('question','')))}**")
 
-        # 画像（あれば表示）
         render_question_image(q)
 
         choices = [safe_str(q.get(f"choice{j+1}", "")) for j in range(5)]
+        render_choices_markdown(choices)
 
-        user_txt = choices[labels.index(user)] if user in labels else "未回答"
-        correct_txt = choices[labels.index(correct)] if correct in labels else "不明"
+        ui = labels.index(user) if user in labels else -1
+        ci = labels.index(correct) if correct in labels else -1
 
-        st.markdown(f"- あなたの回答：{user.upper() if user else '未回答'} - {user_txt}")
-        st.markdown(f"- 正解：{correct.upper() if correct else '不明'} - {correct_txt}")
+        user_txt = auto_math_to_latex(safe_str(choices[ui])) if ui >= 0 else "未回答"
+        correct_txt = auto_math_to_latex(safe_str(choices[ci])) if ci >= 0 else "不明"
 
-        exp = safe_str(q.get("explanation", ""))
+        st.markdown(f"- あなたの回答：**{labels_upper[ui]}**  {user_txt}" if ui >= 0 else "- あなたの回答：**未回答**")
+        st.markdown(f"- 正解：**{labels_upper[ci]}**  {correct_txt}" if ci >= 0 else "- 正解：**不明**（CSVの answer を確認）")
+
+        exp = auto_math_to_latex(safe_str(q.get("explanation", "")))
         if exp:
             st.markdown(f"📘 解説：{exp}")
 
@@ -378,10 +460,9 @@ if st.session_state.page == "result":
     st.success(f"🎯 スコア：{score} / {st.session_state.num_questions}")
 
     if st.button("もう一度解く"):
-        keep_keys = ["authenticated"]  # もし何か認証を使っている場合だけ残す
+        keep_keys = ["authenticated"]  # もし認証を使っている場合だけ残す
         for k in list(st.session_state.keys()):
             if k not in keep_keys:
                 del st.session_state[k]
         st.rerun()
         st.stop()
-
