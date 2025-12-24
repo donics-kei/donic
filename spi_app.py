@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 # =========================
 DEFAULT_TIME_LIMIT = 60
 CSV_FILENAME = "spi_questions_converted.csv"
-IMAGES_DIRNAME = "images"  # 同梱画像フォルダ名（app.pyと同階層に置く）
+IMAGES_DIRNAME = "images"  # app.py と同じ階層に置く
 
 
 # =========================
@@ -38,50 +38,48 @@ def normalize_answer_letter(x: str) -> str:
     s = safe_str(x).lower()
     if s in ["a", "b", "c", "d", "e"]:
         return s
-    return s  # 想定外はそのまま
+    return s
 
 
 def auto_math_to_latex(text: str) -> str:
     """
-    CSVに普通に書いた表記を、表示用に LaTeX へ自動変換。
-    - 1/2      -> \frac{1}{2} （縦分数）
-    - √2       -> \sqrt{2}
-    - √(a+b)   -> \sqrt{a+b}
-    - ルート3  -> \sqrt{3}
-    - sqrt(5)  -> \sqrt{5}
+    CSVに普通に書いた表記を、表示用に LaTeX（数式モード）へ自動変換。
 
-    すでに \frac や \sqrt が含まれている場合は基本そのまま（安全側）
+    ✅ 分数： 1/2  ->  $\\frac{1}{2}$ （縦分数）
+    ✅ ルート： √2, √(a+b), ルート3, sqrt(5) -> $\\sqrt{...}$
+
+    ※ すでに $...$ や \\frac/\\sqrt が含まれている場合は基本そのまま（安全側）
     """
     if not text:
         return ""
 
-    # すでにLaTeX分数/ルートを書いている場合は触らない（安全側）
-    if "\\frac" in text or "\\sqrt" in text:
-        return text
+    s = str(text)
 
-    s = text
+    # すでに数式モード/LaTeXっぽいものがあるなら触らない
+    if "$" in s or "\\frac" in s or "\\sqrt" in s:
+        return s
 
-    # --- ルート変換 ---
-    # sqrt( ... ) -> \sqrt{ ... }
-    s = re.sub(r'\bsqrt\s*\(\s*([^)]+?)\s*\)', r'\\sqrt{\1}', s)
+    # --- ルート変換（先） ---
+    # sqrt( ... ) -> $\sqrt{...}$
+    s = re.sub(r'\bsqrt\s*\(\s*([^)]+?)\s*\)', r'$\\sqrt{\1}$', s)
 
-    # ルート( ... ) -> \sqrt{ ... }
-    s = re.sub(r'ルート\s*\(\s*([^)]+?)\s*\)', r'\\sqrt{\1}', s)
+    # ルート( ... ) -> $\sqrt{...}$
+    s = re.sub(r'ルート\s*\(\s*([^)]+?)\s*\)', r'$\\sqrt{\1}$', s)
 
-    # ルートX -> \sqrt{X} （Xは数字/英字）
-    s = re.sub(r'ルート\s*([0-9A-Za-z]+)', r'\\sqrt{\1}', s)
+    # ルートX -> $\sqrt{X}$  (Xが数字/英字)
+    s = re.sub(r'ルート\s*([0-9A-Za-z]+)', r'$\\sqrt{\1}$', s)
 
-    # √( ... ) -> \sqrt{ ... }
-    s = re.sub(r'√\s*\(\s*([^)]+?)\s*\)', r'\\sqrt{\1}', s)
+    # √( ... ) -> $\sqrt{...}$
+    s = re.sub(r'√\s*\(\s*([^)]+?)\s*\)', r'$\\sqrt{\1}$', s)
 
-    # √X -> \sqrt{X} （Xは数字/英字）
-    s = re.sub(r'√\s*([0-9A-Za-z]+)', r'\\sqrt{\1}', s)
+    # √X -> $\sqrt{X}$ (Xが数字/英字)
+    s = re.sub(r'√\s*([0-9A-Za-z]+)', r'$\\sqrt{\1}$', s)
 
-    # --- 分数変換（最後に） ---
-    # 1/2 -> \frac{1}{2}  ※数字/数字のみ対象（誤変換防止）
+    # --- 分数変換（最後） ---
+    # 1/2 -> $\frac{1}{2}$（数字/数字のみ対象）
     s = re.sub(
         r'(?<!\d)(\d+)\s*/\s*(\d+)(?!\d)',
-        lambda m: f'\\\\frac{{{m.group(1)}}}{{{m.group(2)}}}',
+        lambda m: f'$\\\\frac{{{m.group(1)}}}{{{m.group(2)}}}$',
         s
     )
 
@@ -97,12 +95,10 @@ def render_question_image(q):
     image_url = safe_str(q.get("image_url", ""))
     image_name = safe_str(q.get("image", ""))
 
-    # URL優先
     if image_url and is_http_url(image_url):
         st.image(image_url, use_container_width=True)
         return
 
-    # 同梱ファイル
     if image_name:
         base_dir = os.path.dirname(__file__)
         img_path = os.path.join(base_dir, IMAGES_DIRNAME, image_name)
@@ -113,7 +109,7 @@ def render_question_image(q):
 
 
 def render_choices_markdown(choices):
-    """選択肢をMarkdown(LaTeX可)で表示（分数・ルートも綺麗に出る）"""
+    """選択肢を Markdown（LaTeX可）で表示"""
     labels_upper = ["A", "B", "C", "D", "E"]
     for i in range(5):
         c = auto_math_to_latex(safe_str(choices[i]))
@@ -129,21 +125,17 @@ def load_questions():
     csv_path = os.path.join(base_dir, CSV_FILENAME)
     df = pd.read_csv(csv_path)
 
-    # 列名を扱いやすく
     df.columns = df.columns.str.strip().str.lower()
 
-    # 必須列チェック
     required = ["category", "question", "answer",
                 "choice1", "choice2", "choice3", "choice4", "choice5"]
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(f"CSVに必須列がありません: {missing}")
 
-    # questionの空欄除去
     df["question"] = df["question"].astype(str).str.strip()
     df = df[df["question"] != ""]
 
-    # 任意列（なければ作る）
     if "image" not in df.columns:
         df["image"] = ""
     if "image_url" not in df.columns:
@@ -206,7 +198,6 @@ if st.session_state.page != "select" and st.session_state.questions is None:
 # クイズ画面（選択肢はMarkdown表示＋回答はA〜E）
 # =========================
 def render_quiz(q, idx, choices):
-    # 問題文（Markdown＝分数/ルートOK）
     question_text = auto_math_to_latex(safe_str(q.get("question", "")))
     if question_text:
         st.markdown(f"### {question_text}")
@@ -215,13 +206,9 @@ def render_quiz(q, idx, choices):
         st.json(q.to_dict())
         st.stop()
 
-    # 画像（あれば）
     render_question_image(q)
-
-    # 選択肢（Markdown＝分数/ルートOK）
     render_choices_markdown(choices)
 
-    # 回答はA〜Eだけ選択（radioに数式を入れない＝崩れない）
     map_upper_to_lower = {"A": "a", "B": "b", "C": "c", "D": "d", "E": "e"}
     picked_upper = st.radio(
         "回答を選んでください：",
@@ -250,7 +237,6 @@ def render_quiz(q, idx, choices):
         else:
             st.session_state.q_index += 1
             st.session_state.stage = "quiz"
-            # 次の問題で状態が残りにくいよう削除
             del_key = f"pick_{idx}"
             if del_key in st.session_state:
                 del st.session_state[del_key]
@@ -258,7 +244,6 @@ def render_quiz(q, idx, choices):
         st.rerun()
         st.stop()
 
-    # 回答確定
     if st.button("回答する"):
         if picked_upper:
             st.session_state.answers[idx] = map_upper_to_lower[picked_upper]
@@ -278,15 +263,15 @@ def render_quiz(q, idx, choices):
             st.warning("A〜Eのいずれかを選んでください。")
             st.stop()
 
-    # 1秒ごと更新（現行仕様踏襲：同時接続が多い場合は後で軽量化推奨）
+    # 1秒ごと更新（同時接続が多いなら後で軽量化推奨）
     time.sleep(1)
     st.rerun()
     st.stop()
 
 
 def render_explanation(q, idx, choices):
-    user = st.session_state.answers[idx]  # a-e or None
-    correct = normalize_answer_letter(q.get("answer", ""))  # a-e想定
+    user = st.session_state.answers[idx]
+    correct = normalize_answer_letter(q.get("answer", ""))
 
     labels = ["a", "b", "c", "d", "e"]
     labels_upper = ["A", "B", "C", "D", "E"]
@@ -304,7 +289,6 @@ def render_explanation(q, idx, choices):
     else:
         st.error("❌ 不正解")
 
-    # 正解/自分の回答（本文はMarkdown＝分数/ルートOK）
     if ci >= 0:
         st.markdown(f"**正解：{labels_upper[ci]}**  {correct_txt}")
     else:
@@ -332,7 +316,6 @@ def render_explanation(q, idx, choices):
 def render_current_stage():
     idx = st.session_state.q_index
     q = st.session_state.questions.iloc[idx]
-
     choices = [safe_str(q.get(f"choice{i+1}", "")) for i in range(5)]
 
     if st.session_state.stage == "quiz":
@@ -340,7 +323,6 @@ def render_current_stage():
     elif st.session_state.stage == "explanation":
         render_explanation(q, idx, choices)
     else:
-        st.warning("❗ ステージ不明。select に戻ります")
         st.session_state.page = "select"
         st.rerun()
         st.stop()
@@ -350,7 +332,7 @@ def render_current_stage():
 # 画面：開始
 # =========================
 if st.session_state.page == "select":
-    st.title("SPI模擬試験（画像＋分数＋ルート対応）")
+    st.title("SPI模擬試験（画像＋縦分数＋ルート対応）")
 
     try:
         df = load_questions()
@@ -369,8 +351,8 @@ if st.session_state.page == "select":
     st.session_state.temp_time_limit = st.number_input("制限時間（1問あたり秒）", 5, 600, value=DEFAULT_TIME_LIMIT)
 
     st.caption(
-        "【分数】CSVに 1/2 のように書けば縦分数で表示します。\n"
-        "【ルート】CSVに √2、√(a+b)、ルート3、sqrt(5) のように書けばルート表示します。\n"
+        "【分数】CSVに 1/2 と書けば縦分数で表示します。\n"
+        "【ルート】CSVに √2 / √(a+b) / ルート3 / sqrt(5) と書けばルート表示します。\n"
         f"【画像】CSVに image（例 q001.png）を入れて {IMAGES_DIRNAME}/ に配置。URLなら image_url 列。"
     )
 
@@ -460,7 +442,7 @@ if st.session_state.page == "result":
     st.success(f"🎯 スコア：{score} / {st.session_state.num_questions}")
 
     if st.button("もう一度解く"):
-        keep_keys = ["authenticated"]  # もし認証を使っている場合だけ残す
+        keep_keys = ["authenticated"]
         for k in list(st.session_state.keys()):
             if k not in keep_keys:
                 del st.session_state[k]
