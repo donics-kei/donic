@@ -319,7 +319,7 @@ def render_result():
 # 画面：select
 # =========================
 if st.session_state.page == "select":
-    st.title("SPI模擬試験（画像＋縦分数＋ルート対応）")
+    st.title("SPI模擬試験対策アプリ")
 
     try:
         df = load_questions()
@@ -333,11 +333,6 @@ if st.session_state.page == "select":
     st.session_state.temp_mode = st.radio("採点方法：", ["その都度採点", "最後にまとめて採点"])
     st.session_state.temp_time_limit = st.number_input("制限時間（1問あたり秒）", 5, 600, value=DEFAULT_TIME_LIMIT)
 
-    st.caption(
-        "【分数】CSVに 1/3（または \"1/3\"）と入れてOK。画面表示では \" は除去し、縦分数にします。\n"
-        "【ルート】√2 / √(a+b) / ルート3 / sqrt(5) もOK。\n"
-        f"【画像】image列なら {IMAGES_DIRNAME}/ に置く。URLなら image_url 列。"
-    )
 
     if st.button("開始"):
         cat = st.session_state.temp_category
@@ -388,3 +383,4 @@ if st.session_state.page == "quiz":
 if st.session_state.page == "result":
     render_result()
     st.stop()
+
